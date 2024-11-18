@@ -198,8 +198,8 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
         }
 
         // compute energy dispersion
-        sigmaE[cub_i] += (pow(x_idx - (nCellsXY-1)/2, 2) + 
-                          pow(y_idx - (nCellsXY-1)/2, 2))*E;
+        sigmaE[cub_i] += (pow(x_idx - (nCellsXY-1.)/2, 2) + 
+                          pow(y_idx - (nCellsXY-1.)/2, 2))*E;
       }
     }
     
