@@ -119,7 +119,7 @@ def to_tensor_and_dtype(input, target_dtype=torch.float32):
     return input
 
 class CustomDataset(Dataset):
-    def __init__(self, filelist, primary_only=True, target="energy", logscale=True, transform=None):
+    def __init__(self, filelist, primary_only=True, target="energy", transform=None):
         
         targets_dict = {
             "energy":1,
@@ -136,10 +136,6 @@ class CustomDataset(Dataset):
             targets += info[targets_dict[target]]
 
         samples = to_tensor_and_dtype(np.array(samples))
-        if target == "energy":
-            targets = to_tensor_and_dtype(np.array(targets))
-            if logscale:
-                targets = np.log10(targets)
         #targets = F.one_hot(torch.tensor(targets)-1, nClasses)
 
         self.data = list(zip(samples, targets))
