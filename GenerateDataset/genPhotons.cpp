@@ -76,13 +76,15 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
   vector<vector<vector<int>>> photon_matrix(nCublets,  vector<vector<int>>(
                                             timesteps, vector<int>(
                                             n_sensors, 0)));
-  vector<double> dEmax(nCublets, 0.0);        // maximum energy diff between step beginning and end...
-  vector<double> Etot(nCublets, 0.0);         // total energy released...
-  vector<double> sigmaE(nCublets, 0.0);       // (weighted) energy dispersion...
-  vector<Particle> p(nCublets, unclassified); // particle classification...
-  vector<int> Nint(nCublets, 0);              // number of interactions...
-  vector<int> pdg_max(nCublets, 0);           // pdg encoding of primary particle...
-                                              // per cublet 
+  vector<double> dEmax(nCublets, 0.0);                   // maximum energy diff between step beginning and end...
+  vector<double> Etot(nCublets, 0.0);                    // total energy released...
+  vector<TVector3> Ecentroid(nCublets, TVector3(0,0,0)); // (weighted) centroid of energy depositions...
+  vector<double> sigmaR(nCublets, 0.0);                  // (weighted) energy dispersion on xy plane...
+  vector<double> sigmaZ(nCublets, 0.0);                  // (weighted) energy dispersion along z...
+  vector<Particle> p(nCublets, unclassified);            // particle classification...
+  vector<int> Nint(nCublets, 0);                         // number of interactions...
+  vector<int> pdg_max(nCublets, 0);                      // pdg encoding of primary particle...
+                                                         // per cublet 
 
   ofstream outfile;
   if(primary_only){
@@ -112,12 +114,14 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
         fill(timestep.begin(), timestep.end(), 0.0);
       }
     }
-    fill(dEmax.begin(),   dEmax.end(),   0.0);
-    fill(Etot.begin(),    Etot.end(),    0.0);
-    fill(sigmaE.begin(),  sigmaE.end(),  0.0);
-    fill(p.begin(),       p.end(),       unclassified);
-    fill(Nint.begin(),    Nint.end(),    0);
-    fill(pdg_max.begin(), pdg_max.end(), 0);
+    fill(dEmax.begin(),     dEmax.end(),     0.0);
+    fill(Etot.begin(),      Etot.end(),      0.0);
+    fill(Ecentroid.begin(), Ecentroid.end(), TVector3(0,0,0));
+    fill(sigmaR.begin(),    sigmaR.end(),    0.0);
+    fill(sigmaZ.begin(),    sigmaZ.end(),    0.0);
+    fill(p.begin(),         p.end(),         unclassified);
+    fill(Nint.begin(),      Nint.end(),      0);
+    fill(pdg_max.begin(),   pdg_max.end(),   0);
 
     // primary vertex identification variables
     double dE_primary = 0;
@@ -181,7 +185,14 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
         int z_idx =  cell_i/(nCellsXY*nCellsXY);           // i/(x*y)
         int y_idx = (cell_i%(nCellsXY*nCellsXY))/nCellsXY; // (i%(x*y))/x
         int x_idx =  cell_i%nCellsXY;                      // i%x
+
+        // update centroid
+        Ecentroid[cub_i].SetXYZ(Ecentroid[cub_i].X() + x_idx*E,
+                                Ecentroid[cub_i].Y() + y_idx*E,
+                                Ecentroid[cub_i].Z() + z_idx*E);
+
         
+        // compute photon arriving to sensors
         double ph_emitted = E*lightyield;
 
         // loop over sensors
@@ -196,13 +207,38 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
             }
           }
         }
-
-        // compute energy dispersion
-        sigmaE[cub_i] += (pow(x_idx - (nCellsXY-1.)/2, 2) + 
-                          pow(y_idx - (nCellsXY-1.)/2, 2))*E;
       }
     }
-    
+
+    // correct centroid estimation
+    for(int i_cub = 0; i_cub < nCublets; i_cub++) {
+      if(!(Etot[i_cub] > 0)){
+        Ecentroid[i_cub].SetXYZ(Ecentroid[i_cub].X()/Etot[i_cub],
+                                Ecentroid[i_cub].Y()/Etot[i_cub],
+                                Ecentroid[i_cub].Z()/Etot[i_cub]);
+      }
+    }
+
+    // compute energy dispersions
+    for (int j = 0; j < n_int; j++) {
+      int cub_i = (*cublet_idx)[j];
+
+      // check if energy has been released in the cublet, otherwise skip
+      if((primary_only && (cub_i != primary_peak_cub)) || !(Etot[cub_i] > 0)) continue;
+      
+      double E  = (*edep)[j];
+      int cell_i = (*cell_idx)[j];
+      int z_idx =  cell_i/(nCellsXY*nCellsXY);           // i/(x*y)
+      int y_idx = (cell_i%(nCellsXY*nCellsXY))/nCellsXY; // (i%(x*y))/x
+      int x_idx =  cell_i%nCellsXY;                      // i%x
+
+      
+      // compute energy dispersion
+      sigmaR[cub_i] += (pow(x_idx - Ecentroid[cub_i].X(), 2) + 
+                        pow(y_idx - Ecentroid[cub_i].Y(), 2))*E;
+      sigmaZ[cub_i] +=  pow(z_idx - Ecentroid[cub_i].Z(), 2)*E;
+    }
+
     // save photon counts to file
     if(!primary_only){
       outfile.open(outputFilePath + name + "_" + to_string(i) + ".dat", std::ios::binary);
@@ -239,10 +275,17 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
 
       // total energy
       outfile.write(reinterpret_cast<char*>(&Etot[i_cub]), sizeof(Etot[i_cub]));
+      
+      // energy centroid
+      outfile.write(reinterpret_cast<char*>(&Ecentroid[i_cub].X()), sizeof(Ecentroid[i_cub].X()));
+      outfile.write(reinterpret_cast<char*>(&Ecentroid[i_cub].Y()), sizeof(Ecentroid[i_cub].Y()));
+      outfile.write(reinterpret_cast<char*>(&Ecentroid[i_cub].Z()), sizeof(Ecentroid[i_cub].Z()));
 
       // energy dispersion
-      sigmaE[i_cub] /= Etot[i_cub];
-      outfile.write(reinterpret_cast<char*>(&sigmaE[i_cub]), sizeof(sigmaE[i_cub]));
+      sigmaR[i_cub] /= Etot[i_cub];
+      sigmaZ[i_cub] /= Etot[i_cub];
+      outfile.write(reinterpret_cast<char*>(&sigmaR[i_cub]), sizeof(sigmaR[i_cub]));
+      outfile.write(reinterpret_cast<char*>(&sigmaZ[i_cub]), sizeof(sigmaZ[i_cub]));
 
       // number of interactions
       outfile.write(reinterpret_cast<char*>(&Nint[i_cub]), sizeof(Nint[i_cub]));
