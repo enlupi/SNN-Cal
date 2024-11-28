@@ -277,9 +277,12 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
       outfile.write(reinterpret_cast<char*>(&Etot[i_cub]), sizeof(Etot[i_cub]));
       
       // energy centroid
-      outfile.write(reinterpret_cast<char*>(&Ecentroid[i_cub].X()), sizeof(Ecentroid[i_cub].X()));
-      outfile.write(reinterpret_cast<char*>(&Ecentroid[i_cub].Y()), sizeof(Ecentroid[i_cub].Y()));
-      outfile.write(reinterpret_cast<char*>(&Ecentroid[i_cub].Z()), sizeof(Ecentroid[i_cub].Z()));
+      double x = Ecentroid[i_cub].X();
+      double y = Ecentroid[i_cub].Y();
+      double z = Ecentroid[i_cub].Z();
+      outfile.write(reinterpret_cast<char*>(&x), sizeof(x));
+      outfile.write(reinterpret_cast<char*>(&y), sizeof(y));
+      outfile.write(reinterpret_cast<char*>(&z), sizeof(z));
 
       // energy dispersion
       sigmaR[i_cub] /= Etot[i_cub];
