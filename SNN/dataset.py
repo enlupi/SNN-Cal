@@ -27,6 +27,8 @@ import imageio
 
 from sklearn.metrics import ConfusionMatrixDisplay
 
+from collections.abc import Iterable
+
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 
@@ -47,7 +49,9 @@ def readfile(filename, primary_only):
 
   ph_list = []
   E_list  = []
-  sE_list = []
+  ct_list = []
+  sR_list = []
+  sZ_list = []
   N_list  = []
   p_class = []
   if not primary_only:
@@ -80,8 +84,15 @@ def readfile(filename, primary_only):
       # Read total energy released
       E_list.append(struct.unpack('d', file.read(8))[0])
       
+      # Read energy centroid
+      x = struct.unpack('d', file.read(8))[0]
+      y = struct.unpack('d', file.read(8))[0]
+      z = struct.unpack('d', file.read(8))[0]
+      ct_list.append((x,y,z))
+      
       # Read energy dispersion
-      sE_list.append(struct.unpack('d', file.read(8))[0])
+      sR_list.append(struct.unpack('d', file.read(8))[0])
+      sZ_list.append(struct.unpack('d', file.read(8))[0])
     
       # Read number of interactions
       N_list.append(struct.unpack('i', file.read(4))[0])
@@ -95,7 +106,7 @@ def readfile(filename, primary_only):
 
       data = file.read(4)
 
-  res = [ph_list, E_list, sE_list, N_list, p_class]
+  res = [ph_list, E_list, ct_list, sR_list, sZ_list, N_list, p_class]
   if not primary_only:
     res.append(primary_list)
 
@@ -123,9 +134,11 @@ class CustomDataset(Dataset):
         
         targets_dict = {
             "energy":1,
-            "dispersion":2,
-            "N_int":3,
-            "particle":4
+            "centroid":2,
+            "sigmaR":3,
+            "sigmaZ":4,
+            "N_int":5,
+            "particle":6
         }
         
         samples = []
@@ -133,7 +146,12 @@ class CustomDataset(Dataset):
         for file in filelist:
             info = readfile(file, primary_only)
             samples += info[0]
-            targets += info[targets_dict[target]]
+
+            if isinstance(target, Iterable) and not isinstance(target, (str, bytes)):
+                temp = [info[targets_dict[key]] for key in target]
+                targets += list(zip(*temp))
+            else:
+                targets += info[targets_dict[target]]
 
         samples = to_tensor_and_dtype(np.array(samples))
         #targets = F.one_hot(torch.tensor(targets)-1, nClasses)
