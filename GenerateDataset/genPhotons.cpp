@@ -212,11 +212,10 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
 
     // correct centroid estimation
     for(int i_cub = 0; i_cub < nCublets; i_cub++) {
-      if(!(Etot[i_cub] > 0)){
-        Ecentroid[i_cub].SetXYZ(Ecentroid[i_cub].X()/Etot[i_cub],
-                                Ecentroid[i_cub].Y()/Etot[i_cub],
-                                Ecentroid[i_cub].Z()/Etot[i_cub]);
-      }
+      if(!(Etot[i_cub] > 0)) continue;
+      Ecentroid[i_cub].SetXYZ(Ecentroid[i_cub].X()/Etot[i_cub],
+                              Ecentroid[i_cub].Y()/Etot[i_cub],
+                              Ecentroid[i_cub].Z()/Etot[i_cub]);
     }
 
     // compute energy dispersions
