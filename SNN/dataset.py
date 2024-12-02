@@ -138,7 +138,8 @@ class CustomDataset(Dataset):
             "sigmaR":3,
             "sigmaZ":4,
             "N_int":5,
-            "particle":6
+            "particle":6,
+            "primary":7
         }
         
         samples = []
