@@ -50,7 +50,7 @@ def readfile(filename, primary_only):
   ph_list = []
   E_list  = []
   ct_list = []
-  sR_list = []
+  sE_list = []
   sZ_list = []
   N_list  = []
   p_class = []
@@ -91,8 +91,10 @@ def readfile(filename, primary_only):
       ct_list.append((x,y,z))
       
       # Read energy dispersion
-      sR_list.append(struct.unpack('d', file.read(8))[0])
-      sZ_list.append(struct.unpack('d', file.read(8))[0])
+      sX = struct.unpack('d', file.read(8))[0]
+      sY = struct.unpack('d', file.read(8))[0]
+      sZ = struct.unpack('d', file.read(8))[0]
+      ct_list.append((sX, sY, sZ))
     
       # Read number of interactions
       N_list.append(struct.unpack('i', file.read(4))[0])
@@ -106,7 +108,7 @@ def readfile(filename, primary_only):
 
       data = file.read(4)
 
-  res = [ph_list, E_list, ct_list, sR_list, sZ_list, N_list, p_class]
+  res = [ph_list, E_list, ct_list, sE_list, sZ_list, N_list, p_class]
   if not primary_only:
     res.append(primary_list)
 
