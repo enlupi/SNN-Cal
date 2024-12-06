@@ -1,35 +1,10 @@
 import numpy as np
 import math
-
 import struct
 import os
-
-import snntorch as snn
 import torch
-import torch.nn as nn
-
-import snntorch.spikeplot as splt
-from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader, random_split
-from torchmetrics.classification import MulticlassConfusionMatrix
-
-from snntorch import surrogate
-import snntorch.functional as SF
-import torch.nn.functional as F
-from torch.nn import NLLLoss, LogSoftmax
-
-from snntorch import spikegen
-
-import matplotlib.pyplot as plt
-from matplotlib.colors import SymLogNorm
-import snntorch.spikeplot as splt
-import imageio
-
-from sklearn.metrics import ConfusionMatrixDisplay
-
 from collections.abc import Iterable
-
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 
 ###############################################################################
@@ -165,23 +140,32 @@ class CustomDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
-    def __getitem__(self, idx):
-        if isinstance(idx, slice):
-            return [self.__getitem__(i) for i in range(*index.indices(len(self)))]  # type: ignore
-        if isinstance(idx, (list, np.ndarray)):
-            return [self.__getitem__(i) for i in idx]
+    def __getitem__(self, idx): 
 
-        sample = self.data[idx]
-        if self.transform:
-            sample = self.transform(sample)
-            
-        return sample
+        if isinstance(idx, slice):
+            return [self.__getitem__(i) for i in range(*idx.indices(len(self)))]  # Slicing directly
+        
+        if isinstance(idx, (list, np.ndarray)):
+            if (isinstance(idx, np.ndarray) and idx.dtype == bool) or \
+               (isinstance(idx, list)       and all(isinstance(item, bool) for item in idx)):  # Boolean mask
+                if len(idx) != len(self.data):
+                    raise ValueError("Boolean mask must have the same length as the dataset")
+                return [self.__getitem__(i) for i, mask in enumerate(idx) if mask]
+            return [self.__getitem__(i) for i in idx]  # Indexing with list or array
+        
+        if isinstance(idx, (int, np.int64, torch.int64)):
+            sample = self.data[idx]
+            if self.transform:
+                sample = self.transform(sample)
+            return sample
+        
+        raise TypeError("Invalid index type: {}".format(type(idx)))
     
 
 ###############################################################################
 
 
-def build_dataset(path, split=0.8, val=True, max_files=50, *args, **kwargs):
+def build_dataset(path, max_files=50, *args, **kwargs):
     
     filelist = []
 
@@ -191,17 +175,36 @@ def build_dataset(path, split=0.8, val=True, max_files=50, *args, **kwargs):
             filelist += [os.path.join(path, subdir_name, f) for f in files[:max_files]]
 
     dataset = CustomDataset(filelist, *args, **kwargs)
-    
-    train_size = int(len(dataset)*split)
-    test_size = len(dataset)-train_size
-    train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
 
-    if val:
-        val_size = int(train_size*(1-split))
-        train_size -= val_size
-        train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size])
-        return train_dataset, test_dataset, val_dataset
+    return dataset
+
     
+def build_loaders(dataset, split=(0.6, 0.2, 0.2), batch_size=50, *args, **kwargs):
+    
+    if isinstance(split, Iterable) and not isinstance(split, (str, bytes)):
+        if len(split) > 3:
+            raise ValueError("Split should be provided for at most 3 datasets (train, test, validation)")
+        if sum(split) > 1:
+            raise ValueError("Split fractions should sum up to 1")
+        train_size = int(len(dataset)*split[0])
+        test_size = int(len(dataset)*split[1])
+        try:
+            val_size = int(len(dataset)*split[2])
+        except:
+            val_size = len(dataset) - train_size - test_size
     else:
-        return train_dataset, test_dataset
+        train_size = int(len(dataset)*split)
+        test_size = len(dataset)-train_size
+        val_size = 0
+
+    train_dataset, test_dataset, val_dataset = random_split(dataset, [train_size, test_size, val_size])
+
+    train_loader = DataLoader(train_dataset[:(len(train_dataset)//batch_size)*batch_size], batch_size=batch_size, *args, **kwargs)
+    test_loader  = DataLoader(test_dataset[:(len(test_dataset)//batch_size)*batch_size], batch_size=batch_size, *args, **kwargs)
+    if len(val_dataset) > 0:
+        val_loader = DataLoader(val_dataset[:(len(val_dataset)//batch_size)*batch_size], batch_size=batch_size, *args, **kwargs)
+        return train_loader, test_loader, val_loader
+    
+    return train_loader, test_loader
+    
 
