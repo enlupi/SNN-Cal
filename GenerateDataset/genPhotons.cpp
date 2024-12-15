@@ -20,6 +20,8 @@ enum Particle {
   pion = 3,
   other = 4
 };
+
+// set useful constant values
 int nCubletsX = 10, nCubletsY = 10, nCubletsZ = 10;
 int nCellsXY = 10;
 int nCellsZ  = 10;
@@ -27,6 +29,13 @@ double cellSizeXY = 3; //mm
 double cellSizeZ  = 12; //mm
 double deltaE_vtx_thr = -50e3; // MeV, threshold of energy loss to be considered
                                // primary vertex of the event
+int n_sensors = nCellsXY*nCellsZ;
+int nCublets = nCubletsX*nCubletsY*nCubletsZ;
+double lightyield = 200; // ph/MeV 
+double max_t = 20; // ns
+double dt = 0.2; // ns
+int timesteps = max_t/dt;
+
 
 // input tree variables
 int i_evt;
@@ -39,24 +48,79 @@ vector<int>*    cublet_idx;
 vector<int>*    cell_idx;
 
 
+
+vector<float> read_matrices(string filename){
+    // Step 1: Read the shape from the text file
+    ifstream shape_file("shape.txt");
+    vector<size_t> shape;
+    if (shape_file.is_open()) {
+      string line;
+      getline(shape_file, line);
+      istringstream iss(line);
+      size_t dim;
+      while (iss >> dim) {
+          shape.push_back(dim);
+      }
+    }
+    else {
+      cerr << "Failed to open shape.txt" << endl;
+    }
+
+    // Step 2: Calculate the total number of elements
+    size_t total_elements = 1;
+    for(size_t dim : shape){
+      total_elements *= dim;
+    }
+
+    // Step 3: Read the binary data
+    ifstream binary_file(filename, ios::binary);
+    if (!binary_file.is_open()) {
+      cerr << "Failed to open tensor.bin" << endl;
+    }
+
+    vector<float> data(total_elements);  // Assuming float32 data type
+    binary_file.read(reinterpret_cast<char*>(data.data()), total_elements * sizeof(float));
+
+    return data;
+}
+
+int total_reflections(int n){
+  vector<int> extra_points;
+  for(int i = 0; i < n+1; i++){
+    switch(n){
+      case 0:
+        extra_points.push_back(1);
+        break;
+      case 1:
+        extra_points.push_back(5);
+        break;
+      default:
+        extra_points.push_back(4*(2*i-1));
+    }
+  }
+
+  int total_points = 0;
+  for(int i = 0; i < extra_points.size(); i++){
+    total_points += extra_points[i];
+  }
+
+  return total_points;
+}
+
+
 void genPhotonTree(string filename, string treename, string outputFilePath,
                    vector<float>& emission_matrix, int max_N,
                    int verbose=0, bool primary_only=true, int max_event=1000) {
 
   auto start_time = std::chrono::high_resolution_clock::now();
 
+  int total_points = total_reflections(max_N);
+  vector<int> shape{nCellsXY, nCellsXY, nCellsZ, total_reflections(5), nCellsXY, nCellsZ, 2};
+  int dims = shape.size();
+
   size_t name_start = filename.find_last_of('/');
   size_t name_end   = filename.find_last_of('.');
   string name = filename.substr(name_start+1, name_end-name_start-1);
-
-  // set useful constant values
-  int n_sensors = nCellsXY*nCellsZ;
-  int nCublets = nCubletsX*nCubletsY*nCubletsZ;
-  double lightyield = 200; // ph/MeV 
-  double max_t = 20; // ns
-  double dt = 0.2; // ns
-  int timesteps = max_t/dt;
-
 
   // get simulation results tree from file
   TFile* file = TFile::Open(filename.c_str()); 
@@ -187,19 +251,28 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
         Ecentroid[cub_i].SetXYZ(Ecentroid[cub_i].X() + x_idx*E,
                                 Ecentroid[cub_i].Y() + y_idx*E,
                                 Ecentroid[cub_i].Z() + z_idx*E);
-
         
         // compute photon arriving to sensors
         double ph_emitted = E*lightyield;
 
-        // loop over sensors
-        for (int i_sz = 0; i_sz < nCellsZ; i_sz++) {
+        // loop over sensors 
+        int chunk_size = total_points*shape[dims-3]*shape[dims-2]*shape[dims-1];
+        vector<float> cached_chunk(chunk_size);
+        int chunk_start = z_idx * shape[dims-4]*shape[dims-3]*shape[dims-2]*shape[dims-1] +
+                          y_idx * shape[dims-5]*shape[dims-4]*shape[dims-3]*shape[dims-2]*shape[dims-1] +
+                          x_idx * shape[dims-6]*shape[dims-5]*shape[dims-4]*shape[dims-3]*shape[dims-2]*shape[dims-1];
+        std::copy(emission_matrix.begin() + chunk_start,
+                  emission_matrix.begin() + chunk_start + chunk_size,
+                  cached_chunk.begin());
+        for(int n = 0; n < total_points; n++){
           for (int i_sx = 0; i_sx < nCellsXY; i_sx++) {
-            int sensor_i = i_sz*nCellsXY+i_sx;
-            vector<int> indices_list = get_index(max_N, x_idx, y_idx, z_idx, i_sx, i_sz);
-            for(int idx : indices_list){
-              int n_photon = round(ph_emitted*emssion_matrix[idx]);
-              double time = (t0+emission_matrix[idx+1]);
+            for (int i_sz = 0; i_sz < nCellsZ; i_sz++) {
+              int sensor_i = i_sz*nCellsXY+i_sx;
+              int idx = i_sz * shape[dims-1] +
+                        i_sx * shape[dims-2]*shape[dims-1] +
+                        n    * shape[dims-3]*shape[dims-2]*shape[dims-1];
+              int n_photon = round(ph_emitted*cached_chunk[idx]);
+              double time = (t0+cached_chunk[idx+1]);
               int step = time/dt;
               if(time < max_t) {
                 photon_matrix[cub_i][step][sensor_i] += n_photon;
@@ -332,86 +405,6 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
   return;
 }
 
-
-vector<float> read_matrices(string filename){
-    // Step 1: Read the shape from the text file
-    ifstream shape_file("shape.txt");
-    vector<size_t> shape;
-    if (shape_file.is_open()) {
-      string line;
-      getline(shape_file, line);
-      istringstream iss(line);
-      size_t dim;
-      while (iss >> dim) {
-          shape.push_back(dim);
-      }
-    }
-    else {
-      cerr << "Failed to open shape.txt" << endl;
-      return 1;
-    }
-
-    // Step 2: Calculate the total number of elements
-    size_t total_elements = 1;
-    for(size_t dim : shape){
-      total_elements *= dim;
-    }
-
-    // Step 3: Read the binary data
-    ifstream binary_file(filename, ios::binary);
-    if (!binary_file.is_open()) {
-      cerr << "Failed to open tensor.bin" << endl;
-      return 1;
-    }
-
-    vector<float> data(total_elements);  // Assuming float32 data type
-    binary_file.read(reinterpret_cast<char*>(data.data()), total_elements * sizeof(float));
-
-    return data;
-}
-
-int total_reflections(int n){
-  vector<int> extra_points;
-  for(int i = 0; i < n+1; i++){
-    switch(n){
-      case 0:
-        extra_points.push_back(1);
-        break;
-      case 1:
-        extra_points.push_back(5);
-        break;
-      default:
-        extra_points.push_back(4*(2*i-1));
-    }
-  }
-
-  int total_points = 0;
-  for(int i = 0; i < extra_points.size(); i++){
-    total_points += extra_points[i];
-  }
-
-  return total_points;
-}
-
-vector<int> get_index(int max_N,
-                      int x_idx, int y_idx, int z_idx,
-                      int sx_idx, int sz_idx){
-                        
-  vector<int> shape(nCellsXY, nCellsXY, nCellsZ, nCellsXY, nCellsZ, 2);
-  int l = shape.size();
-  int position_idx = sz_idx * shape[l-1]+ 
-                     sx_idx * shape[l-2]*shape[l-1] +
-                      z_idx * shape[l-3]*shape[l-2]*shape[l-1] +
-                      y_idx * shape[l-4]*shape[l-3]*shape[l-2]*shape[l-1] +
-                      x_idx * shape[l-5]*shape[l-4]*shape[l-3]*shape[l-2]*shape[l-1];
-  vector<int> indices_list;
-  int total_points = total_reflections(max_N);
-  for(int n = 0; n < total_points; n++){
-    indices_list.push_back(position_idx + n*shape[l-6]*shape[l-5]*shape[l-4]*shape[l-3]*shape[l-2]*shape[l-1]);
-  } 
-
-  return indices_list;
-}
 
 
 
