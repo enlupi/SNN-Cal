@@ -26,7 +26,6 @@ def readfile(filename, primary_only):
   E_list  = []
   ct_list = []
   sE_list = []
-  sZ_list = []
   N_list  = []
   p_class = []
   if not primary_only:
@@ -69,7 +68,7 @@ def readfile(filename, primary_only):
       sX = struct.unpack('d', file.read(8))[0]
       sY = struct.unpack('d', file.read(8))[0]
       sZ = struct.unpack('d', file.read(8))[0]
-      ct_list.append((sX, sY, sZ))
+      sE_list.append((sX, sY, sZ))
     
       # Read number of interactions
       N_list.append(struct.unpack('i', file.read(4))[0])
@@ -83,7 +82,7 @@ def readfile(filename, primary_only):
 
       data = file.read(4)
 
-  res = [ph_list, E_list, ct_list, sE_list, sZ_list, N_list, p_class]
+  res = [ph_list, E_list, ct_list, sE_list, N_list, p_class]
   if not primary_only:
     res.append(primary_list)
 
@@ -160,6 +159,17 @@ class CustomDataset(Dataset):
             return sample
         
         raise TypeError("Invalid index type: {}".format(type(idx)))
+
+    def clean(self, selection_fn):
+        """
+        Filters the dataset by applying a selection function to each sample.
+
+        Args:
+            selection_fn (callable): A function that takes a single sample as input
+                                     (sample, target) and returns a boolean indicating
+                                     whether to keep the sample.
+        """
+        self.data = [sample for sample in self.data if selection_fn(sample)]
     
 
 ###############################################################################
@@ -179,30 +189,30 @@ def build_dataset(path, max_files=50, *args, **kwargs):
     return dataset
 
     
-def build_loaders(dataset, split=(0.6, 0.2, 0.2), batch_size=50, *args, **kwargs):
+def build_loaders(dataset, split=(0.6, 0.2), batch_size=50, *args, **kwargs):
     
     if isinstance(split, Iterable) and not isinstance(split, (str, bytes)):
-        if len(split) > 3:
-            raise ValueError("Split should be provided for at most 3 datasets (train, test, validation)")
+        if len(split) > 2:
+            raise ValueError("Split should be provided for training and validation datasets")
         if sum(split) > 1:
-            raise ValueError("Split fractions should sum up to 1")
+            raise ValueError("Split fractions should sum up to 1 at most")
         train_size = int(len(dataset)*split[0])
-        test_size = int(len(dataset)*split[1])
         try:
-            val_size = int(len(dataset)*split[2])
+            val_size = int(len(dataset)*split[1])
         except:
-            val_size = len(dataset) - train_size - test_size
+            val_size = 0
+        test_size = len(dataset) - train_size - val_size
     else:
         train_size = int(len(dataset)*split)
-        test_size = len(dataset)-train_size
+        test_size = len(dataset) - train_size
         val_size = 0
 
     train_dataset, test_dataset, val_dataset = random_split(dataset, [train_size, test_size, val_size])
 
-    train_loader = DataLoader(train_dataset[:(len(train_dataset)//batch_size)*batch_size], batch_size=batch_size, *args, **kwargs)
-    test_loader  = DataLoader(test_dataset[:(len(test_dataset)//batch_size)*batch_size], batch_size=batch_size, *args, **kwargs)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, *args, **kwargs)
+    test_loader  = DataLoader(test_dataset, batch_size=batch_size, *args, **kwargs)
     if len(val_dataset) > 0:
-        val_loader = DataLoader(val_dataset[:(len(val_dataset)//batch_size)*batch_size], batch_size=batch_size, *args, **kwargs)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, *args, **kwargs)
         return train_loader, test_loader, val_loader
     
     return train_loader, test_loader
