@@ -79,8 +79,7 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
   vector<double> dEmax(nCublets, 0.0);                   // maximum energy diff between step beginning and end...
   vector<double> Etot(nCublets, 0.0);                    // total energy released...
   vector<TVector3> Ecentroid(nCublets, TVector3(0,0,0)); // (weighted) centroid of energy depositions...
-  vector<double> sigmaR(nCublets, 0.0);                  // (weighted) energy dispersion on xy plane...
-  vector<double> sigmaZ(nCublets, 0.0);                  // (weighted) energy dispersion along z...
+  vector<TVector3> sigmaE(nCublets,    TVector3(0,0,0)); // (weighted) energy dispersion along x, y and z...
   vector<Particle> p(nCublets, unclassified);            // particle classification...
   vector<int> Nint(nCublets, 0);                         // number of interactions...
   vector<int> pdg_max(nCublets, 0);                      // pdg encoding of primary particle...
@@ -117,8 +116,7 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
     fill(dEmax.begin(),     dEmax.end(),     0.0);
     fill(Etot.begin(),      Etot.end(),      0.0);
     fill(Ecentroid.begin(), Ecentroid.end(), TVector3(0,0,0));
-    fill(sigmaR.begin(),    sigmaR.end(),    0.0);
-    fill(sigmaZ.begin(),    sigmaZ.end(),    0.0);
+    fill(sigmaE.begin(),    sigmaE.end(),    TVector3(0,0,0));
     fill(p.begin(),         p.end(),         unclassified);
     fill(Nint.begin(),      Nint.end(),      0);
     fill(pdg_max.begin(),   pdg_max.end(),   0);
@@ -230,12 +228,11 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
       int z_idx =  cell_i/(nCellsXY*nCellsXY);           // i/(x*y)
       int y_idx = (cell_i%(nCellsXY*nCellsXY))/nCellsXY; // (i%(x*y))/x
       int x_idx =  cell_i%nCellsXY;                      // i%x
-
       
-      // compute energy dispersion
-      sigmaR[cub_i] += (pow(x_idx - Ecentroid[cub_i].X(), 2) + 
-                        pow(y_idx - Ecentroid[cub_i].Y(), 2))*E;
-      sigmaZ[cub_i] +=  pow(z_idx - Ecentroid[cub_i].Z(), 2)*E;
+      // update energy dispersion vector
+      sigmaE[cub_i].SetXYZ(sigmaE[cub_i].X() + pow(x_idx - Ecentroid[cub_i].X(), 2)*E,
+                           sigmaE[cub_i].Y() + pow(y_idx - Ecentroid[cub_i].Y(), 2)*E,
+                           sigmaE[cub_i].Z() + pow(z_idx - Ecentroid[cub_i].Z(), 2)*E);
     }
 
     // save photon counts to file
@@ -284,10 +281,12 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
       outfile.write(reinterpret_cast<char*>(&z), sizeof(z));
 
       // energy dispersion
-      sigmaR[i_cub] /= Etot[i_cub];
-      sigmaZ[i_cub] /= Etot[i_cub];
-      outfile.write(reinterpret_cast<char*>(&sigmaR[i_cub]), sizeof(sigmaR[i_cub]));
-      outfile.write(reinterpret_cast<char*>(&sigmaZ[i_cub]), sizeof(sigmaZ[i_cub]));
+      double sX = sigmaE[i_cub].X()/Etot[i_cub];
+      double sY = sigmaE[i_cub].Y()/Etot[i_cub];
+      double sZ = sigmaE[i_cub].Z()/Etot[i_cub];
+      outfile.write(reinterpret_cast<char*>(&sX), sizeof(sX));
+      outfile.write(reinterpret_cast<char*>(&sY), sizeof(sY));
+      outfile.write(reinterpret_cast<char*>(&sZ), sizeof(sZ));
 
       // number of interactions
       outfile.write(reinterpret_cast<char*>(&Nint[i_cub]), sizeof(Nint[i_cub]));
