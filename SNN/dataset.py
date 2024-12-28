@@ -111,11 +111,10 @@ class CustomDataset(Dataset):
         targets_dict = {
             "energy":1,
             "centroid":2,
-            "sigmaR":3,
-            "sigmaZ":4,
-            "N_int":5,
-            "particle":6,
-            "primary":7
+            "dispersion":3,
+            "N_int":4,
+            "particle":5,
+            "primary":6
         }
         
         samples = []
