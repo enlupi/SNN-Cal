@@ -6,6 +6,7 @@ This directory contains all the files needed for the definition, training and te
 1. [SNN definition, training and testing](#snn-definition-training-and-testing)
     - [Spiking Network Class](#spiking-network-class)
         - [Initialization](#initialization)
+        - [Forward Step](#forward-step)
     - [Predictor Class](#predictor-class)
     - [MultiLoss Class](#multiloss-class)
     - [Trainer Class](#trainer-class)
