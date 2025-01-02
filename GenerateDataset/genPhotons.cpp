@@ -87,7 +87,7 @@ vector<float> read_matrices(string filename){
 int total_reflections(int n){
   vector<int> extra_points;
   for(int i = 0; i < n+1; i++){
-    switch(n){
+    switch(i){
       case 0:
         extra_points.push_back(1);
         break;
@@ -551,7 +551,7 @@ int main(int argc, char* argv[]) {
   */
 
   cout << "Reading matrices..." << endl;
-  vector<float> emission_matrix = read_matrices("ot.bin");
+  vector<float> emission_matrix = read_matrices("emission_matrix.bin");
 
   cout << "Timing and solid angle matrices computed.\n"
        << "\n---------------------------------------\n\n"
