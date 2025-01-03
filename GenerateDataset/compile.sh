@@ -1,0 +1,1 @@
+g++ -Ofast -g genPhotons.cpp -pthread -std=c++11 -m64 -I/home/centos/root/include -o genPhotons -L/home/centos/root/lib -Wl,-rpath,/home/centos/root/lib -lCore -lRIO -lNet -lHist -lGraf -lGraf3d -lGpad -lTree -lRint -lPostscript -lMatrix -lPhysics -lMathCore -lThread -lMultiProc -lROOTVecOps -pthread -lm -ldl
