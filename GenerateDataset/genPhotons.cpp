@@ -72,7 +72,7 @@ array<double, 3> IndexesToCoordinates(int cublet_idx, int cell_idx){
   return coordinates;
 }
 
-tuple<array<int, 3>, array<int, 3>> CoordinatesToIndexes3D(array<double, 3> coordinates){
+array<int, 4> CoordinatesToIndexes(array<double, 3> coordinates){
   array<int, 3> cublet_idxs, cell_idxs;
   for(int i = 0; i < coordinates.size(); i++){
     cublet_idxs[i] = (coordinates[i] - (startCublet[i]-cubletSize[i]/2))/cubletSize[i]; 
@@ -81,18 +81,18 @@ tuple<array<int, 3>, array<int, 3>> CoordinatesToIndexes3D(array<double, 3> coor
   int cublet_idx = cublet_idxs[0] +
                    cublet_idxs[1] * nCublets[0] +
                    cublet_idxs[2] * nCublets[0]*nCublets[1];
-  return {cublet_idx, cell_idxs}; 
+  return {cublet_idx, cell_idxs[0], cell_idxs[1], cell_idxs[2]}; 
 }
 
 
 // convert cublet and cell indexes to new coordinates system:
-tuple<int, array<int, 3>> CoordinatesShift(int cublet_idx, int cell_idx, array<double, 2> shift){
+array<int, 4> CoordinatesShift(int cublet_idx, int cell_idx, array<double, 2> shift){
   array<double, 3> coordinates = IndexesToCoordinates(cublet_idx, cell_idx);
   for(int i = 0; i < shift.size(); i++){
     coordinates[i] += shift[i];
   }
-
-
+  array<int, 4> results = CoordinatesToIndexes(coordinates);
+  return results;
 }
 
 
@@ -172,6 +172,7 @@ vector<int>*    cell_idx;
 
 void genPhotonTree(string filename, string treename, string outputFilePath,
                    vector<float>& emission_matrix, int max_N,
+                   TRandom3 rng,
                    int verbose=0, bool primary_only=true, int max_event=1000) {
 
   auto start_time = std::chrono::high_resolution_clock::now();
@@ -249,6 +250,9 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
     // primary vertex identification variables
     double dE_primary = 0;
     int primary_peak_cub = -1;
+
+    // generate random shift
+    array<double, 2> shift = {rng.Uniform(0, cubletSize[0]), rng.Uniform(0, cubletSize[1])};
     
     // loop over interaction per event
     for (int j = 0; j < n_int; j++) {
@@ -259,7 +263,10 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
       double dE = (*deltae)[j];
       if (E > 0 && t0 < max_t) {
 
-        int cub_i = (*cublet_idx)[j];
+        int old_cub_i = (*cublet_idx)[j];
+        int old_cell_i = (*cell_idx)[j];
+        // shift cublet and cell indexes
+        auto [cub_i, x_idx, y_idx, z_idx] = CoordinatesShift(old_cub_i, old_cell_i, shift);
 
         // update total energy
         Etot[cub_i] += E;
@@ -304,10 +311,10 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
           }
         }
 
-        int cell_i = (*cell_idx)[j];
-        int z_idx =  cell_i/(nCellsXY*nCellsXY);           // i/(x*y)
-        int y_idx = (cell_i%(nCellsXY*nCellsXY))/nCellsXY; // (i%(x*y))/x
-        int x_idx =  cell_i%nCellsXY;                      // i%x
+        //int cell_i = (*cell_idx)[j];
+        //int z_idx =  cell_i/(nCellsXY*nCellsXY);           // i/(x*y)
+        //int y_idx = (cell_i%(nCellsXY*nCellsXY))/nCellsXY; // (i%(x*y))/x
+        //int x_idx =  cell_i%nCellsXY;                      // i%x
 
         // update centroid
         Ecentroid[cub_i].SetXYZ(Ecentroid[cub_i].X() + x_idx*E,
@@ -544,6 +551,7 @@ int main(int argc, char* argv[]) {
   bool primary_only = false;
   int max_event = 1000;
   int reflections = 0;
+  int seed = -1;
   for (int i = 1; i < argc; i++) {
     std::string flag(argv[i]);
 
@@ -593,6 +601,14 @@ int main(int argc, char* argv[]) {
       i += 1;
       reflections = std::stoi(argv[i]);
     }
+
+    else if (flag.find("seed") != string::npos) {
+      reflections = std::stoi(flag.substr(7));
+    }
+    else if (flag=="-s") {
+      i += 1;
+      reflections = std::stoi(argv[i]);
+    }
   }
 
   if(fileName == "") {
@@ -619,9 +635,13 @@ int main(int argc, char* argv[]) {
        << "\n---------------------------------------\n\n"
        << "Analyzing file " << fileName << ":" << endl;
 
+  TRandom3 rng;
+  if(seed != -1){
+    rng.SetSeed(seed);
+  }
 
   genPhotonTree(fileName, "outputTree", outputFilePath, emission_matrix,
-                reflections, verbose, primary_only, max_event);
+                reflections, rng, verbose, primary_only, max_event);
 
 	cout << "File processing completed." << endl;
 
