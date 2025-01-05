@@ -267,6 +267,7 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
         int old_cell_i = (*cell_idx)[j];
         // shift cublet and cell indexes
         auto [cub_i, x_idx, y_idx, z_idx] = CoordinatesShift(old_cub_i, old_cell_i, shift);
+        if(cub_i < 0 || cub_i >= nCublets) continue;   
 
         // update total energy
         Etot[cub_i] += E;
