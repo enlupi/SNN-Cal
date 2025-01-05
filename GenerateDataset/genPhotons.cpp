@@ -6,6 +6,8 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <array>
+#include <tuple>
 #include "TMath.h"
 #include "TFile.h"
 #include "TTree.h"
@@ -22,30 +24,76 @@ enum Particle {
 };
 
 // set useful constant values
-int nCubletsX = 10, nCubletsY = 10, nCubletsZ = 10;
-int nCellsXY = 10;
-int nCellsZ  = 10;
-double cellSizeXY = 3; //mm
-double cellSizeZ  = 12; //mm
+
+// detector geometry
+array<int, 3> nCublets = {10, 10, 10};
+int nCublets = nCublets[0]*nCublets[1]*nCublets[2];
+array<double, 3> cubletSize = {30, 30, 120}; //mm
+array<double, 3> startCublet = {
+                  -cubletSize[0] * (1.0*(nCublets[0]-1)/2) // -148.5 mm
+                  -cubletSize[1] * (1.0*(nCublets[1]-1)/2) // -148.5 mm
+                  -cubletSize[2] * (1.0*(nCublets[2]-1)/2) // -594 mm
+                  }; // position of the centre of the first cublet in the calorimeter
+array<int, 3> nCells = {10, 10, 10}; 
+array<double, 3> cellSize = {3, 3, 12}; //mm
+array<double, 3> startCell = {
+                    -cellSize[0] * (1.0*(nCells[0]-1)/2) // -14.85 mm
+                    -cellSize[1] * (1.0*(nCells[1]-1)/2) // -14.85 mm
+                    -cellSize[2] * (1.0*(nCells[2]-1)/2) // -59.4 mm
+                  }; // position of the centre of the first cell (relative to the cublet)
+//light characteristics
 double deltaE_vtx_thr = -50e3; // MeV, threshold of energy loss to be considered
-                               // primary vertex of the event
-int n_sensors = nCellsXY*nCellsZ;
-int nCublets = nCubletsX*nCubletsY*nCubletsZ;
+                               //      primary vertex of the event
+int n_sensors = nCells[0]*nCells[2]; // along xz plane
 double lightyield = 200; // ph/MeV 
 double max_t = 20; // ns
 double dt = 0.2; // ns
 int timesteps = max_t/dt;
 
 
-// input tree variables
-int i_evt;
-int n_int;
-vector<int>*    pdg;
-vector<double>* edep;
-vector<double>* deltae;
-vector<double>* glob_t;
-vector<int>*    cublet_idx;
-vector<int>*    cell_idx;
+inline array<int, 3> SingleIndexTo3DIndexes(int idx, array<int, 3> nUnits){
+  array<int, 3> indexes = {
+                     idx%nUnits[0];                        // i%x
+                    (idx%(nUnits[0]*nUnits[1]))/nUnits[0]; // (i%(x*y))/x
+                     idx/(nUnits[0]*nUnits[1]);            // i/(x*y)
+                  };
+  return indexes;
+}
+
+// convert cublet and cell indexes in 3D coordinates
+array<double, 3> IndexesToCoordinates(int cublet_idx, int cell_idx){
+  array<int, 3> cublet_idxs = SingleIndexTo3DIndexes(cublet_idx, nCublets);
+  array<int, 3> cell_idxs   = SingleIndexTo3DIndexes(cell_idx,   nCells);
+  array<int, 3> coordinates;
+  for(int i = 0; i < nCublets.size(); i++){
+    coordinates[i] = startCublet[i] + cublet_idx[i]*cubletSize[i] +
+                     startCell[i]   + cell_idxs[i] *cellSize[i];
+  }
+  return coordinates;
+}
+
+tuple<array<int, 3>, array<int, 3>> CoordinatesToIndexes3D(array<double, 3> coordinates){
+  array<int, 3> cublet_idxs, cell_idxs;
+  for(int i = 0; i < coordinates.size(); i++){
+    cublet_idxs[i] = (coordinates[i] - (startCublet[i]-cubletSize[i]/2))/cubletSize[i]; 
+    cell_idxs[i] = (coordinates[i] - ((startCublet[i]-cubletSize[i]/2)+cublet_idx[i]*cubletSize[i]))/cellSize[i]; 
+  }
+  int cublet_idx = cublet_idxs[0] +
+                   cublet_idxs[1] * nCublets[0] +
+                   cublet_idxs[2] * nCublets[0]*nCublets[1];
+  return {cublet_idx, cell_idxs}; 
+}
+
+
+// convert cublet and cell indexes to new coordinates system:
+tuple<int, array<int, 3>> CoordinatesShift(int cublet_idx, int cell_idx, array<double, 2> shift){
+  array<double, 3> coordinates = IndexesToCoordinates(cublet_idx, cell_idx);
+  for(int i = 0; i < shift.size(); i++){
+    coordinates[i] += shift[i];
+  }
+
+
+}
 
 
 
@@ -106,6 +154,20 @@ int total_reflections(int n){
 
   return total_points;
 }
+
+
+
+
+
+// input tree variables
+int i_evt;
+int n_int;
+vector<int>*    pdg;
+vector<double>* edep;
+vector<double>* deltae;
+vector<double>* glob_t;
+vector<int>*    cublet_idx;
+vector<int>*    cell_idx;
 
 
 void genPhotonTree(string filename, string treename, string outputFilePath,
