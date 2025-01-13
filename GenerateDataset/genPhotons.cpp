@@ -38,10 +38,10 @@ array<double, 3> startCublet = {
 array<int, 3> nCells = {10, 10, 10}; 
 array<double, 3> cellSize = {3, 3, 12}; //mm
 array<double, 3> startCell = {
-                    -cellSize[0] * (1.0*(nCells[0])/2), // -150 mm
-                    -cellSize[1] * (1.0*(nCells[1])/2), // -150 mm
-                    -cellSize[2] * (1.0*(nCells[2])/2)  // -60 mm
-                  }; // position of the left side of the first cell (relative to the cublet)
+                    -cellSize[0] * (1.0*(nCells[0])/2), // -15 mm
+                    -cellSize[1] * (1.0*(nCells[1])/2), // -15 mm
+                    -cellSize[2] * (1.0*(nCells[2])/2)  // -6 mm
+                  }; // position of the left side of the first cell (relative to the centre of the cublet)
 //light characteristics
 double deltaE_vtx_thr = -50e3; // MeV, threshold of energy loss to be considered
                                //      primary vertex of the event
@@ -254,7 +254,7 @@ void genPhotonTree(string filename, string treename, string outputFilePath,
 
 //cout << "CREATE SHIFT" << endl;
     // generate random shift
-    array<double, 2> shift = {rng.Uniform(0, cubletSize[0]), rng.Uniform(0, cubletSize[1])};
+    array<double, 2> shift = {rng.Uniform(0, cubletSize[0]), rng.Uniform(0, cubletSize[1])};  //{0.5*cubletSize[0], 0.5*cubletSize[1]}; 
 //cout << "CREATED SHIFT" << endl;
     
     // loop over interaction per event
