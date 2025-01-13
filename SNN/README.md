@@ -3,24 +3,27 @@ This directory contains all the files needed for the definition, training and te
 
 # Table of Contents
 
-1. [SNN definition, training and testing](#snn-definition-training-and-testing)
-    - [Spiking Network Class](#spiking-network-class)
-        - [Initialization](#initialization)
-        - [Forward Step](#forward-step)
-    - [Predictor Class](#predictor-class)
-    - [MultiLoss Class](#multiloss-class)
-    - [Trainer Class](#trainer-class)
-2. [Dataset Creation](#dataset-creation)
-3. [Visualization](#visualization)
-4. [Conclusion](#conclusion)
+1. [Code Overview](#code-overview)
+    - [SNN definition, training and testing](#snn-definition-training-and-testing)
+        - [Spiking Network Class](#spiking-network-class)
+        - [Predictor Class](#predictor-class)
+        - [MultiLoss Class](#multiloss-class)
+        - [Trainer Class](#trainer-class)
+    - [Dataset Creation](#dataset-creation)
+    - [Visualization](#visualization)
+2. [How to Use](#how-to-use)
+    - [Create a Dataset](#create-a-dataset)
+    - [Define a Network](#Define-a-network)
+3. [Future Developments](#future-developments)
 
 ---
+# Code Overview
 
-# SNN definition, training and testing
+## SNN definition, training and testing
 The code for this section is contained in the *SNN_func.py* file. Let's look at its different components.
 
 
-## Spiking Network Class
+### Spiking Network Class
 
 ```python
 class Spiking_Net(nn.Module):
@@ -29,7 +32,7 @@ class Spiking_Net(nn.Module):
 
 This class, as the name suggests, is the one that implements the spiking neural network to be trained. It supports a Fully Connected (feedforward) Network with completely customizable parameters: number of layers, neurons per layer, neuron model and more. 
 
-### Initialization
+#### Initialization
 The initialization function takes two input variables: *net_desc* and *spikegen_fn*.
 
 ```python
@@ -58,48 +61,12 @@ The first variable, *net_desc*, is a dictionary containing the necessary paramet
 4. **output**: a *string* that must be equal either to *spike* or to *membrane* and defines what should be used as the output of the last layer of the network.
 5. **model** (optional): if all layers use the same neural model, it can be specified using this keyword instead of repeated for all layers. In this case, the **neuron_patams** dictionary is simplified and its keys must only be the dictionaries containing the model parameters, not the lists.
 
-Here is an example of how a *net_desc* object may look like:
+The second input variable, *spikegen_fn*, is the function that converts the input data into a spiketrain to be fed to the network. The output of this function must be a **torch tensor** with binary values (i.e only 0s and 1s) of shape *[time, batch size, input layer dim]*. Note that time must be equal to the *timesteps* parameter defined in *net_desc*. <br>
 
-```python
-net_desc = {
-    "layers" : [400, 50, 30],
-    "timesteps": 100,
-    "neuron_params" : {
-                1: [snn.Leaky, 
-                    {"beta" : 1.0,
-                    "learn_beta": True,
-                    "threshold" : 1.0,
-                    "learn_threshold": True,
-                    "spike_grad": surrogate.atan(),
-                    }],
-                2: [snn.Leaky, 
-                    {"beta" : 1.0,
-                    "learn_beta": True,
-                    "threshold" : 1.0e20,
-                    "learn_threshold": False, 
-                    "spike_grad": surrogate.atan(),
-                    }]
-                },
-    "output": "membrane"
-}
+Examples for both *net_desc* and *spikegen_fn* can be found in sub-section *[Define a Network](#define-a-network)*. <br>
 
-```
-The second input variable, *spikegen_fn*, is the function that converts the input data into a spiketrain to be fed to the network. The output of this function must be a **torch tensor** with binary values (i.e only 0s and 1s) of shape *[time, batch size, input layer dim]*. Note that time must be equal to the *timesteps* parameter defined in *net_desc*. 
-Here is an example of this function:
 
-```python
-def spikegen_multi(data, multiplicity=4):
-    og_shape = data.shape
-    spike_data = torch.zeros(og_shape[1], og_shape[0], multiplicity*og_shape[2])
-    for i in range(multiplicity):
-        condition = data > np.power(10, i+2)
-        batch_idx, time_idx, sensor_idx = torch.nonzero(condition, as_tuple=True)
-        spike_data[time_idx, batch_idx, multiplicity*sensor_idx+i] = 1
-
-    return spike_data
-```
-
-### Forward Step
+#### Forward Step
 The forward function is the one called when feeding the data to the network. 
 ```python
     def forward(self, data):
@@ -142,3 +109,106 @@ The forward function is the one called when feeding the data to the network.
             return torch.stack(mem_rec, dim=0)
 ```
 It first transforms the input data into a spiketrain using *spikegen_fn* and then initializes the membrane of each layer. After that, it loops over all timesteps feeding the new spikes to the network and computing how the signal propagates through the layers. Finally, depending on the output selected in *net_desc*, the full history of the membrane/output spikes of the last layer are given in ouput (with shape *[time, batch size, output layer dim]*).
+
+### Predictor Class
+
+```python
+class Predictor():
+```
+This simple class handles the conversion from network output to actual target prediction and computation of the prediction error.
+
+#### Initialization
+
+```python
+    def __init__(self, predict, transform=None, relative=True, population_sizes=None):
+        self.predict = predict
+        self.transform = transform
+        self.relative = relative
+        self.population_sizes = population_sizes
+```
+#### Call
+```python
+    def _predict_singletask(self, output, targets):
+        prediction = self.predict(output)
+        if self.transform:
+            prediction, targets = self.transform(prediction), self.transform(targets)
+        accuracy = torch.abs(targets - prediction)
+        if self.relative:
+            accuracy /= targets
+        return prediction, torch.mean(accuracy, 0)
+    
+    def __call__(self, output, targets):
+        #check if multiple task must be handled
+        if len(targets.shape) == 1:
+            return self._predict_singletask(output, targets)
+        
+        # populations of different size
+        if isinstance(self.population_sizes, (list, np.ndarray)):
+            if sum(self.population_sizes) != output.shape[-1]:
+                raise ValueError("Population sizes must add up to last layer size!")
+            if len(self.population_sizes) != targets.shape[-1]:
+                raise ValueError("Number of populations must be equal to number of tasks!")
+            prediction = torch.zeros(size=targets.shape)
+            accuracy = torch.zeros(size=(targets.shape[1],))
+            chunks = list(accumulate([0]+list(self.population_sizes)))
+            for i, pop in enumerate(self.population_sizes):
+                prediction[:, i], accuracy[i] = \
+                        self._predict_singletask(output[chunks[i]:chunks[i+1]], targets[:, i])
+            return  prediction, accuracy          
+
+        # populations of the same size
+        if isinstance(self.population_sizes, int):
+            output = output.reshape(output.shape[0], output.shape[1], self.population_sizes, -1)
+            if output.shape[-1] != targets.shape[-1]:
+                raise ValueError("Number of populations must be equal to number of tasks!")
+        return self._predict_singletask(output, targets)
+
+```
+
+
+
+# How to Use
+
+## Define a Network
+
+Here is an example of how a *net_desc* object may look like:
+
+```python
+net_desc = {
+    "layers" : [400, 50, 30],
+    "timesteps": 100,
+    "neuron_params" : {
+                1: [snn.Leaky, 
+                    {"beta" : 1.0,
+                    "learn_beta": True,
+                    "threshold" : 1.0,
+                    "learn_threshold": True,
+                    "spike_grad": surrogate.atan(),
+                    }],
+                2: [snn.Leaky, 
+                    {"beta" : 1.0,
+                    "learn_beta": True,
+                    "threshold" : 1.0e20,
+                    "learn_threshold": False, 
+                    "spike_grad": surrogate.atan(),
+                    }]
+                },
+    "output": "membrane"
+}
+
+```
+
+
+Here is an example of this function:
+
+```python
+def spikegen_multi(data, multiplicity=4):
+    og_shape = data.shape
+    spike_data = torch.zeros(og_shape[1], og_shape[0], multiplicity*og_shape[2])
+    for i in range(multiplicity):
+        condition = data > np.power(10, i+2)
+        batch_idx, time_idx, sensor_idx = torch.nonzero(condition, as_tuple=True)
+        spike_data[time_idx, batch_idx, multiplicity*sensor_idx+i] = 1
+
+    return spike_data
+```
