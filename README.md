@@ -11,7 +11,7 @@ First, get a local copy of this repository so that you can run and modify it as 
 > **WARNING!**: The main branch is currently not updated! Please use the *lin_model* branch to enjoy all the functionalities.
 
 
-### Set up the Python Environmente
+### Set up the Python Environment
 
 Second, make sure you have all the packages necessary to run the code. I suggest using a package and environment manager like Anaconda. 
 
