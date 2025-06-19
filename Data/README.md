@@ -36,6 +36,7 @@ The **PrimaryCublets** folder contains only the interactions that took place in 
 The name convention used for the files is *\<primary particle>\_\<file index>.dat*, and each file contains the information of all the 1,000  events contained in the original pre-processed file.
 
 This folders contains three different subfolders, depending on the position of the particle gun with respect to the detector (or its distribution):
-- **Centered**: the initial position of the particle gun is centered on one cublet (⚠️this data is not used, and is present only for testing purposes⚠️) 
+- **Centered**: the initial position of the particle gun is centered on one cublet \
+  (⚠️this data is not used, and is present only for testing purposes⚠️) 
 - **Fixed**: the initial position of the particle gun is centered on the whole face of the detector, which corresponds to the intersection of four cubelets. 
 - **Uniform**: the initial position of the particle gun is randomized, so that it is always contained inside the face of a particular cublets but uniformely distributed inside it.
