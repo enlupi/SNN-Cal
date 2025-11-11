@@ -99,7 +99,15 @@ def main():
     train_Epos_spk.predict.accuracy_fn = lambda p, t: distance(p, t, absolute=True, relative=True)
     train_Epos_spk.test("test")
     train_Epos_spk.predict.accuracy_fn = lambda p, t: distance(p, t, absolute=False, relative=False)
-    train_Epos_spk.show_results(nbins=50, title=["log(E/MeV)", r"$x_c$", r"$y_c$", r"$z_c$"])
+    #train_Epos_spk.show_results(nbins=50, title=["log(E/MeV)", r"$x_c$", r"$y_c$", r"$z_c$"])
+    
+    # Not using show_results(). It avoids an empty plot of the loss function evolution
+    print(f"Test loss: {train_Epos_spk.loss_hist['test'][train_Epos_spk.current_epoch]}")
+    print(f"Test relative error: {train_Epos_spk.acc_hist['test'][train_Epos_spk.current_epoch] * 100}%")
+    train_Epos_spk.plot_pred_vs_target(
+    title=["log(E/MeV)", r"$x_c$", r"$y_c$", r"$z_c$"], nbins=50)
+    train_Epos_spk.plot_residuals(
+    title=["log(E/MeV)", r"$x_c$", r"$y_c$", r"$z_c$"], nbins=50)
 
     plt.show()
 if __name__ == "__main__":

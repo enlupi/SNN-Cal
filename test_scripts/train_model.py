@@ -115,6 +115,8 @@ def main() -> None:
 
     train_Epos_spk.train(args.epochs)
 
+    # plot loss function
+    train_Epos_spk.plot_loss(validation=True, logscale=True)
 
     # save
     torch.save(net_Epos_spk.state_dict(), args.model_out)
