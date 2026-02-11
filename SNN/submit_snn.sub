@@ -1,0 +1,14 @@
+# submit_snn.sub
+executable              = run_job.sh
+arguments               = SNN_direct.py
+
+output                  = logs/snn.$(Cluster).out
+error                   = logs/snn.$(Cluster).err
+log                     = logs/snn.log
+
+request_cpus            = 1
+request_memory          = 8GB
+request_gpus            = 1
+
+
+queue

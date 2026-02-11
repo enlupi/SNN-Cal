@@ -5,7 +5,7 @@ import os
 import torch
 from torch.utils.data import Dataset, DataLoader, random_split
 from collections.abc import Iterable
-
+import torch.nn.functional as F
 
 ###############################################################################
 
@@ -28,6 +28,8 @@ def readfile(filename, primary_only):
   sE_list = []
   N_list  = []
   p_class = []
+  cublet_id = []
+
   if not primary_only:
     primary_list = []
 
@@ -53,8 +55,8 @@ def readfile(filename, primary_only):
       ph_list.append(ph_matrix)
 
       # Read cublet_id
-      cublet_id = struct.unpack('i', file.read(4))[0]
-      
+      cublet_id.append(struct.unpack('i', file.read(4))[0])
+
       # Read total energy released
       E_list.append(struct.unpack('d', file.read(8))[0])
       
@@ -82,7 +84,7 @@ def readfile(filename, primary_only):
 
       data = file.read(4)
 
-  res = [ph_list, E_list, ct_list, sE_list, N_list, p_class]
+  res = [ph_list, E_list, ct_list, sE_list, N_list, p_class, cubelet_id]
   if not primary_only:
     res.append(primary_list)
 
