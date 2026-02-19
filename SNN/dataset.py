@@ -110,6 +110,7 @@ def readfile(filename, primary_only, merged = True):
 ###############################################################################
 
 
+
 # converts to Torch tensor of desired type
 def to_tensor_and_dtype(input, target_dtype=torch.float32):
     
@@ -124,7 +125,7 @@ def to_tensor_and_dtype(input, target_dtype=torch.float32):
     return input
 
 class CustomDataset(Dataset):
-    def __init__(self, filelist, primary_only=True, target="energy", transform=None):
+    def __init__(self, filelist, primary_only=True, target="energy",transform=None):
         
         targets_dict = {
             "energy":1,
@@ -148,7 +149,7 @@ class CustomDataset(Dataset):
                 targets += info[targets_dict[target]]
 
         samples = to_tensor_and_dtype(np.array(samples))
-        #targets = F.one_hot(torch.tensor(targets)-1, nClasses)
+        targets = to_tensor_and_dtype(targets)
 
         self.data = list(zip(samples, targets))
         self.transform = transform
@@ -233,3 +234,5 @@ def build_loaders(dataset, split=(0.6, 0.2), batch_size=50, *args, **kwargs):
         return train_loader, test_loader, val_loader
     
     return train_loader, test_loader
+    
+
