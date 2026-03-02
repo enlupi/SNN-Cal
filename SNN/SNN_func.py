@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Function
 import matplotlib.pyplot as plt
 
 from typing import Callable, Union
@@ -21,6 +22,58 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 ##     SPIKING NEURAL NETWORK
 ##                                                                           ##
 ###############################################################################
+
+class HardThresholdArctanSTE(Function):
+
+    @staticmethod
+    def forward(ctx, input, threshold, k):
+        ctx.save_for_backward(input, threshold, k)
+        # Hard spike (non-differentiable)
+        return (input > threshold).float()
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, threshold, k = ctx.saved_tensors
+        
+        # surrogate derivative: d/dx [0.5 + atan(k(x-th))/π]
+        # derivative = k / (π * (1 + (k(x - th))^2))
+        
+        diff = k * (input - threshold)
+        surrogate_grad = k / (torch.pi * (1 + diff * diff))
+        
+        # chain rule
+        grad_input = grad_output * surrogate_grad
+        grad_threshold = -grad_output * surrogate_grad  # derivative wrt threshold
+        grad_k = None  # if you want k learnable, implement this
+        
+        return grad_input, grad_threshold, grad_k
+
+class SpikeGenSTE(nn.Module):
+    def __init__(self, multiplicity=4):
+        super().__init__()
+        self.multiplicity = multiplicity
+        
+        init_thresholds = torch.tensor([10**(i+2) for i in range(multiplicity)], dtype=torch.float32)
+        self.thresholds = nn.Parameter(init_thresholds)
+        
+        self.k = nn.Parameter(torch.tensor(5.0))  # or fix this number
+
+    def forward(self, data):
+        B, T, S = data.shape
+        
+        # expand thresholds to shape (1,1,1,m)
+        th = self.thresholds.view(1, 1, 1, self.multiplicity)
+        th = th.expand(B, T, S, self.multiplicity)
+        
+        x = data.unsqueeze(-1).expand_as(th)
+
+        # STE: hard threshold forward + arctan gradient backward
+        spikes = HardThresholdArctanSTE.apply(x, th, self.k)
+
+        # reshape and return
+        spikes = spikes.reshape(B, T, S * self.multiplicity)
+        return spikes.permute(1, 0, 2)
+
 
 class Spiking_Net(nn.Module):
     """FCN with variable neural model and number of layers."""
