@@ -53,7 +53,7 @@ def merge_by_events(input_path, num_events, particle_name):
 if __name__ == "__main__":
     full_path_to_data = r"/lhome/ext/uovi123/uovi123l/SNN-Cal/kaon_pruebas2" 
     
-    events_per_file = 100
+    events_per_file = 1000
     
     merge_by_events(full_path_to_data, events_per_file, "kaon")
 
