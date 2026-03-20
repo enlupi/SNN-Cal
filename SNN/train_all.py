@@ -98,11 +98,16 @@ def make_net_desc(output_size: int, output_mode: str) -> dict:
         threshold=1.0, learn_threshold=True,
         spike_grad=surrogate.atan(),
     )
+    last_layer_params = leaky_params.copy()
+    if output_mode == "membrane":
+        last_layer_params.update(threshold=1e20, learn_threshold=False)
+    neuron_params = {i: [snn.Leaky, leaky_params] for i in range(1, 4)}
+    neuron_params[3] = [snn.Leaky, last_layer_params]
     return {
         "layers":       [INPUT_SIZE, 120, 120, output_size],
         "timesteps":    ds.timesteps,
         "output":       output_mode,
-        "neuron_params": {i: [snn.Leaky, leaky_params] for i in range(1, 4)},
+        "neuron_params": neuron_params,
     }
 
 
@@ -150,7 +155,9 @@ class CombinedTargetDataset(Dataset):
 # ── Load base datasets ─────────────────────────────────────────────────────────
 print("Indexing / loading datasets …")
 
-energy_data     = ds.build_dataset(DATA_PATH, MAX_FILES, lazy=True, primary_only=True, target="energy")
+convert_to_log = lambda x:  (x[0], torch.log10(x[1]))
+energy_data     = ds.build_dataset(DATA_PATH, MAX_FILES, lazy=True, primary_only=True, target="energy",
+                                   transform=convert_to_log)
 centroid_data   = ds.build_dataset(DATA_PATH, MAX_FILES, lazy=True, primary_only=True, target="centroid")
 dispersion_data = ds.build_dataset(DATA_PATH, MAX_FILES, lazy=True, primary_only=True, target="dispersion")
 

@@ -17,7 +17,7 @@ from collections.abc import Iterable
 from itertools import accumulate
 
 
-device = "cpu" #torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 
 ###############################################################################
@@ -220,26 +220,36 @@ class Predictor:
     # ------------------------------------------------------------------
 
     def __call__(self, output, targets, reduction: str = "mean"):
+        # output shape: (T, B, n_out)   targets shape: (B,) or (B, n_tasks)
+
         # Single-task shortcut
         if len(targets.shape) == 1:
             return self._predict_singletask(output, targets, reduction)
 
-        # Multi-task: variable population sizes
+        n_tasks = targets.shape[-1]
+
+        # Multi-task: variable population sizes (list/tuple of ints)
         if isinstance(self.population_sizes, (list, tuple)):
             if sum(self.population_sizes) != output.shape[-1]:
-                raise ValueError("Population sizes must add up to last layer size!")
-            if len(self.population_sizes) != targets.shape[-1]:
-                raise ValueError("Number of populations must equal number of tasks!")
+                raise ValueError(
+                    f"Sum of population sizes ({sum(self.population_sizes)}) must equal "
+                    f"last layer size ({output.shape[-1]})."
+                )
+            if len(self.population_sizes) != n_tasks:
+                raise ValueError(
+                    f"Number of populations ({len(self.population_sizes)}) must equal "
+                    f"number of tasks ({n_tasks})."
+                )
 
-            prediction = torch.zeros(size=targets.shape)
+            prediction = torch.zeros(size=targets.shape, device=targets.device)
             accuracy   = (
-                torch.zeros(size=targets.shape)
+                torch.zeros(size=targets.shape, device=targets.device)
                 if reduction == "none"
-                else torch.zeros(size=(targets.shape[1],))
+                else torch.zeros(size=(n_tasks,), device=targets.device)
             )
             chunks = list(accumulate([0] + list(self.population_sizes)))
-            for i in range(len(self.population_sizes)):
-                chunk_out = output[chunks[i]:chunks[i + 1]]
+            for i in range(n_tasks):
+                chunk_out = output[..., chunks[i]:chunks[i + 1]]   # (T, B, pop_size_i)
                 if reduction == "none":
                     prediction[:, i], accuracy[:, i] = \
                         self._predict_singletask(chunk_out, targets[:, i], reduction)
@@ -248,11 +258,29 @@ class Predictor:
                         self._predict_singletask(chunk_out, targets[:, i], reduction)
             return prediction, accuracy
 
-        # Multi-task: equal population sizes
-        output = output.reshape(output.shape[0], output.shape[1], self.population_sizes, -1)
-        if output.shape[-1] != targets.shape[-1]:
-            raise ValueError("Number of populations must equal number of tasks!")
-        return self._predict_singletask(output, targets, reduction)
+        # Multi-task: equal population sizes (single int)
+        pop_size = self.population_sizes
+        if pop_size * n_tasks != output.shape[-1]:
+            raise ValueError(
+                f"Population size ({pop_size}) × n_tasks ({n_tasks}) must equal "
+                f"last layer size ({output.shape[-1]})."
+            )
+
+        prediction = torch.zeros(size=targets.shape, device=targets.device)
+        accuracy   = (
+            torch.zeros(size=targets.shape, device=targets.device)
+            if reduction == "none"
+            else torch.zeros(size=(n_tasks,), device=targets.device)
+        )
+        for i in range(n_tasks):
+            chunk_out = output[..., i * pop_size:(i + 1) * pop_size]   # (T, B, pop_size)
+            if reduction == "none":
+                prediction[:, i], accuracy[:, i] = \
+                    self._predict_singletask(chunk_out, targets[:, i], reduction)
+            else:
+                prediction[:, i], accuracy[i] = \
+                    self._predict_singletask(chunk_out, targets[:, i], reduction)
+        return prediction, accuracy
 
 
 ###############################################################################
@@ -286,11 +314,11 @@ class multi_MSELoss(nn.Module):
         if len(target.shape) < 2:
             target = target.unsqueeze(-1)
 
-        losses = torch.zeros(target.shape[-1])
+        losses = torch.zeros(target.shape[-1], device=input.device)
         for i in range(target.shape[-1]):
             losses[i] = self.func[i](input[:, i], target[:, i], reduction=self.reduction)
 
-        return (self.weights * losses).sum()
+        return (self.weights.to(input.device) * losses).sum()
 
 
 ###############################################################################
@@ -369,7 +397,7 @@ class Trainer:
         The network and optimizer must already be constructed with the same
         architecture / parameter groups before calling this method.
         """
-        checkpoint = torch.load(path, map_location=device)
+        checkpoint = torch.load(path, map_location=device, weights_only=False)
         self.net.load_state_dict(checkpoint["model_state_dict"])
         self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         self.current_epoch = checkpoint["epoch"]
@@ -400,7 +428,7 @@ class Trainer:
                 loss = self.loss_fn(pred, targets)
 
                 temp_loss.append(loss.item())
-                temp_acc.append(acc)
+                temp_acc.append(acc.detach().cpu())
 
         self.loss_hist[dataset_name][self.current_epoch] = np.mean(temp_loss, 0)
         self.acc_hist[dataset_name][self.current_epoch]  = np.mean(temp_acc, 0)
@@ -521,9 +549,9 @@ class Trainer:
                 all_predictions.append(transform(pred))
                 all_accuracy.append(acc)
 
-        all_targets     = torch.cat(all_targets,     dim=0)
-        all_predictions = torch.cat(all_predictions, dim=0)
-        all_accuracy    = torch.cat(all_accuracy,    dim=0)
+        all_targets     = torch.cat(all_targets,     dim=0).cpu()
+        all_predictions = torch.cat(all_predictions, dim=0).cpu()
+        all_accuracy    = torch.cat(all_accuracy,    dim=0).cpu()
 
         if all_targets.dim() < 2:
             all_targets     = all_targets.unsqueeze(-1)
