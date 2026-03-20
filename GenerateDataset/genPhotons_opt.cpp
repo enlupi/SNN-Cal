@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <random>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -56,7 +57,8 @@ int total_reflections(int n) {
     return total;
 }
 
-std::vector<float> read_matrices(const std::string& filename) {
+// Returns the flat data and, via n_tot, the N_tot dimension (shape[3]).
+std::vector<double> read_matrices(const std::string& filename, int& n_tot) {
     std::ifstream shape_file("shape.txt");
     if (!shape_file) {
         std::cerr << "Failed to open shape.txt\n";
@@ -70,6 +72,12 @@ std::vector<float> read_matrices(const std::string& filename) {
         size_t dim;
         while (iss >> dim) shape.push_back(dim);
     }
+    if (shape.size() < 4) {
+        std::cerr << "shape.txt has fewer than 4 dimensions\n";
+        return {};
+    }
+    n_tot = static_cast<int>(shape[3]);   // N_tot: total stored reflection paths
+
     size_t total_elements = 1;
     for (size_t d : shape) total_elements *= d;
 
@@ -78,8 +86,8 @@ std::vector<float> read_matrices(const std::string& filename) {
         std::cerr << "Failed to open " << filename << "\n";
         return {};
     }
-    std::vector<float> data(total_elements);
-    binary_file.read(reinterpret_cast<char*>(data.data()), total_elements * sizeof(float));
+    std::vector<double> data(total_elements);
+    binary_file.read(reinterpret_cast<char*>(data.data()), total_elements * sizeof(double));
     return data;
 }
 
@@ -137,8 +145,9 @@ create_matrices(double cellSizeX, double cellSizeY, double cellSizeZ_,
 void genPhotonTree(const std::string& filename,
                    const std::string& treename,
                    const std::string& outputFilePath,
-                   const std::vector<float>& emission_matrix,
+                   const std::vector<double>& emission_matrix,
                    int max_N,
+                   int  n_tot_stored,
                    int  verbose      = 0,
                    bool primary_only = true,
                    int  max_event    = 1000)
@@ -173,14 +182,13 @@ void genPhotonTree(const std::string& filename,
     // Pre-computing these once avoids re-evaluating the same products in every
     // iteration of the triple sensor loop.
 
-    const int nRefl5    = total_reflections(5);   // = 102
     const int EM_STR_SZ = 2;
-    const int EM_STR_SX = nCellsZ  * EM_STR_SZ;   //     20
-    const int EM_STR_N  = nCellsXY * EM_STR_SX;   //    200
-    const int EM_STR_EZ = nRefl5   * EM_STR_N;    //  20 400
+    const int EM_STR_SX = nCellsZ       * EM_STR_SZ;
+    const int EM_STR_N  = nCellsXY      * EM_STR_SX;
+    const int EM_STR_EZ = n_tot_stored  * EM_STR_N;
     const int EM_STR_EY = nCellsZ  * EM_STR_EZ;   // 204 000
     const int EM_STR_EX = nCellsXY * EM_STR_EY;   // 2 040 000
-    const float* em     = emission_matrix.data();
+    const double* em    = emission_matrix.data();
 
     // ── Extract file stem for output naming ───────────────────────────────
     size_t name_start = filename.find_last_of('/');
@@ -235,6 +243,15 @@ void genPhotonTree(const std::string& filename,
     int cached_x = -1, cached_y = -1, cached_z = -1;
     int cached_chunk_start = 0;
 
+    // Per-event random (x, y) shift, uniform over [0, nCellsXY) cell units
+    // = [0, nCellsXY * cellSizeXY) mm = one cublet width.
+    std::mt19937 rng(std::random_device{}());
+    std::uniform_int_distribution<int> shift_dist(0, nCellsXY - 1);
+    int shift_x = 0, shift_y = 0;
+
+    // Pre-computed calorimeter extents in global cell units
+    const int nGlobalXY = nCubletsX * nCellsXY;   // 100
+
     // ── Event loop ────────────────────────────────────────────────────────
     for (int i = 0; i < n_evts; i++) {
         if (verbose)
@@ -258,6 +275,10 @@ void genPhotonTree(const std::string& filename,
         // Invalidate chunk cache at the start of each event
         cached_x = cached_y = cached_z = -1;
 
+        // Sample per-event (x, y) shift in [0, nCellsXY - 1] cell units
+        shift_x = shift_dist(rng);
+        shift_y = shift_dist(rng);
+
         // ── Interaction loop ──────────────────────────────────────────────
         for (int j = 0; j < n_int; j++) {
             const double E  = (*edep)[j];
@@ -265,7 +286,21 @@ void genPhotonTree(const std::string& filename,
             const double dE = (*deltae)[j];
             if (!(E > 0.0) || t0 >= max_t) continue;
 
-            const int cub_i = (*cublet_idx)[j];
+            // ── Decode raw indices, apply per-event (x, y) shift ──────────
+            // Cublet z stays the same; cublet x/y and cell-local x/y may change.
+            const int raw_cub  = (*cublet_idx)[j];
+            const int raw_cell = (*cell_idx)[j];
+            const int x_loc =  raw_cell % nCellsXY;
+            const int y_loc = (raw_cell % (nCellsXY * nCellsXY)) / nCellsXY;
+            const int z_idx =  raw_cell / (nCellsXY * nCellsXY);
+            const int gx = (raw_cub % nCubletsX) * nCellsXY + x_loc + shift_x;
+            const int gy = ((raw_cub % (nCubletsX * nCubletsY)) / nCubletsX) * nCellsXY + y_loc + shift_y;
+            if (gx >= nGlobalXY || gy >= nGlobalXY) continue;   // outside calorimeter
+            const int x_idx = gx % nCellsXY;
+            const int y_idx = gy % nCellsXY;
+            const int cub_i = (raw_cub / (nCubletsX * nCubletsY)) * nCubletsX * nCubletsY
+                            + (gy / nCellsXY) * nCubletsX
+                            + (gx / nCellsXY);
 
             // Accumulate energy and interaction count
             Etot[cub_i] += E;
@@ -291,12 +326,6 @@ void genPhotonTree(const std::string& filename,
                     default:   p[cub_i] = other;
                 }
             }
-
-            // Cell indices for this interaction
-            const int cell_i = (*cell_idx)[j];
-            const int x_idx  =  cell_i % nCellsXY;
-            const int y_idx  = (cell_i % (nCellsXY * nCellsXY)) / nCellsXY;
-            const int z_idx  =  cell_i / (nCellsXY * nCellsXY);
 
             // Weighted centroid accumulation
             Ecentroid[cub_i].SetXYZ(Ecentroid[cub_i].X() + x_idx * E,
@@ -325,8 +354,8 @@ void genPhotonTree(const std::string& filename,
                     const int base_sx = base_n + i_sx * EM_STR_SX;
                     for (int i_sz = 0; i_sz < nCellsZ; i_sz++) {
                         const int   idx       = base_sx + i_sz * EM_STR_SZ;
-                        const float prob      = em[idx];
-                        const float t_transit = em[idx + 1];
+                        const double prob      = em[idx];
+                        const double t_transit = em[idx + 1];
                         const double time     = t0 + t_transit;
                         if (time >= max_t) continue;
 
@@ -347,17 +376,25 @@ void genPhotonTree(const std::string& filename,
             Ecentroid[i_cub] *= 1.0 / Etot[i_cub];
         }
 
-        // Compute energy dispersion (second pass over interactions)
+        // Compute energy dispersion (second pass — apply the same shift)
         for (int j = 0; j < n_int; j++) {
-            const int cub_i = (*cublet_idx)[j];
+            const int raw_cub  = (*cublet_idx)[j];
+            const int raw_cell = (*cell_idx)[j];
+            const int x_loc =  raw_cell % nCellsXY;
+            const int y_loc = (raw_cell % (nCellsXY * nCellsXY)) / nCellsXY;
+            const int z_idx =  raw_cell / (nCellsXY * nCellsXY);
+            const int gx = (raw_cub % nCubletsX) * nCellsXY + x_loc + shift_x;
+            const int gy = ((raw_cub % (nCubletsX * nCubletsY)) / nCubletsX) * nCellsXY + y_loc + shift_y;
+            if (gx >= nGlobalXY || gy >= nGlobalXY) continue;
+            const int x_idx = gx % nCellsXY;
+            const int y_idx = gy % nCellsXY;
+            const int cub_i = (raw_cub / (nCubletsX * nCubletsY)) * nCubletsX * nCubletsY
+                            + (gy / nCellsXY) * nCubletsX
+                            + (gx / nCellsXY);
+
             if ((primary_only && cub_i != primary_peak_cub) || !(Etot[cub_i] > 0.0)) continue;
 
-            const double E   = (*edep)[j];
-            const int cell_i = (*cell_idx)[j];
-            const int x_idx  =  cell_i % nCellsXY;
-            const int y_idx  = (cell_i % (nCellsXY * nCellsXY)) / nCellsXY;
-            const int z_idx  =  cell_i / (nCellsXY * nCellsXY);
-
+            const double E = (*edep)[j];
             sigmaE[cub_i].SetXYZ(
                 sigmaE[cub_i].X() + std::pow(x_idx - Ecentroid[cub_i].X(), 2) * E,
                 sigmaE[cub_i].Y() + std::pow(y_idx - Ecentroid[cub_i].Y(), 2) * E,
@@ -470,15 +507,16 @@ int main(int argc, char* argv[]) {
     if (outputFilePath.back() != '/') outputFilePath += '/';
 
     std::cout << "Reading matrices...\n";
-    std::vector<float> emission_matrix = read_matrices("emission_matrix.bin");
+    int n_tot_stored = 0;
+    std::vector<double> emission_matrix = read_matrices("emission_matrix_2.bin", n_tot_stored);
     if (emission_matrix.empty()) return 1;
 
-    std::cout << "Matrices loaded.\n"
+    std::cout << "Matrices loaded. N_tot (stored) = " << n_tot_stored << "\n"
               << "\n---------------------------------------\n\n"
               << "Analyzing file " << fileName << ":\n";
 
     genPhotonTree(fileName, "outputTree", outputFilePath, emission_matrix,
-                  reflections, verbose, primary_only, max_event);
+                  reflections, n_tot_stored, verbose, primary_only, max_event);
 
     std::cout << "File processing completed.\n";
     return 0;
