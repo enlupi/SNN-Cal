@@ -5,7 +5,8 @@ import os
 import torch
 from torch.utils.data import Dataset, DataLoader, random_split
 from collections.abc import Iterable
-import torch.nn.functional as F
+
+
 ###############################################################################
 
 
@@ -19,7 +20,7 @@ timesteps = int(max_t/dt)
 ###############################################################################
 
 
-def readfile(filename, primary_only, merged = True):
+def readfile(filename, primary_only):
 
   ph_list = []
   E_list  = []
@@ -27,26 +28,14 @@ def readfile(filename, primary_only, merged = True):
   sE_list = []
   N_list  = []
   p_class = []
-  cublet_id = []
-  event_id = []
-
   if not primary_only:
     primary_list = []
 
-  delimiter = b'EOE '
-
   with open(filename, 'rb') as file:
-    event = 1
+
     data = file.read(4)
     while data:
-      if data == delimiter:
-        event = struct.unpack('i', file.read(4))[0]
-        data = file.read(4)
-
-        if not data:
-            break
-        continue
-
+    
       ph_matrix = np.zeros(shape=(timesteps, nSensors), dtype=np.int32)
 
       # read photon count data
@@ -64,8 +53,8 @@ def readfile(filename, primary_only, merged = True):
       ph_list.append(ph_matrix)
 
       # Read cublet_id
-      cublet_id.append(struct.unpack('i', file.read(4))[0])
-
+      cublet_id = struct.unpack('i', file.read(4))[0]
+      
       # Read total energy released
       E_list.append(struct.unpack('d', file.read(8))[0])
       
@@ -90,17 +79,10 @@ def readfile(filename, primary_only, merged = True):
       # Read primary vertex indicator
       if not primary_only:
         primary_list.append(struct.unpack('i', file.read(4))[0])
-      
-      if merged: 
-        event_id.append(event)
-      
+
       data = file.read(4)
 
-  res = [ph_list, E_list, ct_list, sE_list, N_list, p_class, cublet_id]
-
-  if merged:
-    res.append(event_id)
-    
+  res = [ph_list, E_list, ct_list, sE_list, N_list, p_class]
   if not primary_only:
     res.append(primary_list)
 
@@ -108,7 +90,6 @@ def readfile(filename, primary_only, merged = True):
 
 
 ###############################################################################
-
 
 
 # converts to Torch tensor of desired type
@@ -125,7 +106,7 @@ def to_tensor_and_dtype(input, target_dtype=torch.float32):
     return input
 
 class CustomDataset(Dataset):
-    def __init__(self, filelist, primary_only=True, target="energy",transform=None):
+    def __init__(self, filelist, primary_only=True, target="energy", transform=None):
         
         targets_dict = {
             "energy":1,
@@ -149,7 +130,7 @@ class CustomDataset(Dataset):
                 targets += info[targets_dict[target]]
 
         samples = to_tensor_and_dtype(np.array(samples))
-        targets = to_tensor_and_dtype(targets, target_dtype = torch.int64)
+        #targets = F.one_hot(torch.tensor(targets)-1, nClasses)
 
         self.data = list(zip(samples, targets))
         self.transform = transform
@@ -192,20 +173,29 @@ class CustomDataset(Dataset):
 
 ###############################################################################
 
-
-def build_dataset(path, max_files=50, *args, **kwargs):
-    
+def build_dataset(path, max_files=50, energy_threshold=None, *args, **kwargs):
     filelist = []
-
     for subdir, _, files in os.walk(path):
         subdir_name = os.path.basename(subdir)
         if files:
             filelist += [os.path.join(path, subdir_name, f) for f in files[:max_files]]
 
-    dataset = CustomDataset(filelist, *args, **kwargs)
+    # Extract energy_threshold to avoid passing it to CustomDataset
+    custom_dataset_kwargs = kwargs.copy()
+
+    # Remove energy_threshold from kwargs if it’s there
+    custom_dataset_kwargs.pop('energy_threshold', None)
+
+    dataset = CustomDataset(filelist, *args, **custom_dataset_kwargs)
+
+    # Energy filter
+    if energy_threshold is not None:
+        def energy_cut(x):
+            _, target = x
+            return target[0] >= energy_threshold
+        dataset.clean(energy_cut)
 
     return dataset
-
     
 def build_loaders(dataset, split=(0.6, 0.2), batch_size=50, *args, **kwargs):
     
