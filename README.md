@@ -36,6 +36,6 @@ to create the *snn_hgcal* environment with all the needed components.
 <br>
 If you instead want an environment based on the more modern `python==3.10`, run the following command:
 ```bash
-conda env create -f env/env_310.yml
+conda env create -f env/env_310.yml  # to run on artemisa, use env/env_310_artemisa.yml instead, to solve compatibility issues between Tesla P100 and torch
 ````
 to create a *snn_hgcal* environment with all the needed components on python `3.10`.
