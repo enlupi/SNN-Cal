@@ -1,0 +1,56 @@
+{
+  "checkpoint": "energy_dispersion_refl",
+  "task": "energy_dispersion",
+  "mode": "refl",
+  "n_test_samples": 22412,
+  "metrics": [
+    {
+      "label": "$\\log(E\\,/\\,\\mathrm{MeV})$",
+      "RMSE": 0.26157498359680176,
+      "MAE": 0.20571623742580414,
+      "mean_relative_error": 0.058120083063840866
+    },
+    {
+      "label": "$\\sigma^2_x$",
+      "RMSE": 1.7681989669799805,
+      "MAE": 1.5102691650390625,
+      "mean_relative_error": 0.5857909917831421
+    },
+    {
+      "label": "$\\sigma^2_y$",
+      "RMSE": 1.6370222568511963,
+      "MAE": 1.3653240203857422,
+      "mean_relative_error": 0.5361832976341248
+    },
+    {
+      "label": "$\\sigma^2_z$",
+      "RMSE": 0.9317805767059326,
+      "MAE": 0.6804124712944031,
+      "mean_relative_error": 31.784164428710938
+    },
+    {
+      "label": "$\\sigma^2_x\\ [\\mathrm{mm}^2]$",
+      "RMSE": 15.913790702819824,
+      "MAE": 13.592422485351562,
+      "mean_relative_error": 0.5857909917831421
+    },
+    {
+      "label": "$\\sigma^2_y\\ [\\mathrm{mm}^2]$",
+      "RMSE": 14.733201026916504,
+      "MAE": 12.28791618347168,
+      "mean_relative_error": 0.5361832976341248
+    },
+    {
+      "label": "$\\sigma^2_z\\ [\\mathrm{mm}^2]$",
+      "RMSE": 134.17640686035156,
+      "MAE": 97.97940063476562,
+      "mean_relative_error": 31.78416633605957
+    },
+    {
+      "label": "$E$ [GeV]",
+      "RMSE": 5.131308078765869,
+      "MAE": 3.5698022842407227,
+      "mean_relative_error": 0.5101932287216187
+    }
+  ]
+}

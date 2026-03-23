@@ -1,0 +1,20 @@
+{
+  "checkpoint": "dispersion_y_refl",
+  "task": "dispersion_y",
+  "mode": "refl",
+  "n_test_samples": 22412,
+  "metrics": [
+    {
+      "label": "$\\sigma^2_y$",
+      "RMSE": 1.7306532859802246,
+      "MAE": 1.4705208539962769,
+      "mean_relative_error": 0.5926293730735779
+    },
+    {
+      "label": "$\\sigma^2_y\\ [\\mathrm{mm}^2]$",
+      "RMSE": 15.575879096984863,
+      "MAE": 13.234688758850098,
+      "mean_relative_error": 0.5926293730735779
+    }
+  ]
+}

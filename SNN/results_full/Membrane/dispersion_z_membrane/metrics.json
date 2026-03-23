@@ -1,0 +1,20 @@
+{
+  "checkpoint": "dispersion_z_membrane",
+  "task": "dispersion_z",
+  "mode": "membrane",
+  "n_test_samples": 22412,
+  "metrics": [
+    {
+      "label": "$\\sigma^2_z$",
+      "RMSE": 0.46814996004104614,
+      "MAE": 0.31669852137565613,
+      "mean_relative_error": 9.994932174682617
+    },
+    {
+      "label": "$\\sigma^2_z\\ [\\mathrm{mm}^2]$",
+      "RMSE": 67.4135971069336,
+      "MAE": 45.604583740234375,
+      "mean_relative_error": 9.994932174682617
+    }
+  ]
+}

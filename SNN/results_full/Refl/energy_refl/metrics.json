@@ -1,0 +1,20 @@
+{
+  "checkpoint": "energy_refl",
+  "task": "energy",
+  "mode": "refl",
+  "n_test_samples": 22412,
+  "metrics": [
+    {
+      "label": "$\\log(E\\,/\\,\\mathrm{MeV})$",
+      "RMSE": 0.27066805958747864,
+      "MAE": 0.22524066269397736,
+      "mean_relative_error": 0.06162230670452118
+    },
+    {
+      "label": "$E$ [GeV]",
+      "RMSE": 6.000537395477295,
+      "MAE": 4.246406078338623,
+      "mean_relative_error": 0.42327597737312317
+    }
+  ]
+}

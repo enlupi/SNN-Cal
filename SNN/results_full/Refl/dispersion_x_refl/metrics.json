@@ -1,0 +1,20 @@
+{
+  "checkpoint": "dispersion_x_refl",
+  "task": "dispersion_x",
+  "mode": "refl",
+  "n_test_samples": 22412,
+  "metrics": [
+    {
+      "label": "$\\sigma^2_x$",
+      "RMSE": 2.0472395420074463,
+      "MAE": 1.8224077224731445,
+      "mean_relative_error": 0.721530556678772
+    },
+    {
+      "label": "$\\sigma^2_x\\ [\\mathrm{mm}^2]$",
+      "RMSE": 18.425153732299805,
+      "MAE": 16.401668548583984,
+      "mean_relative_error": 0.721530556678772
+    }
+  ]
+}

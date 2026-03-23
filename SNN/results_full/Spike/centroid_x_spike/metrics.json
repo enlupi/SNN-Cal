@@ -1,0 +1,20 @@
+{
+  "checkpoint": "centroid_x_spike",
+  "task": "centroid_x",
+  "mode": "spike",
+  "n_test_samples": 22412,
+  "metrics": [
+    {
+      "label": "$x_c$",
+      "RMSE": 0.4198864996433258,
+      "MAE": 0.308769166469574,
+      "mean_relative_error": 0.1202564612030983
+    },
+    {
+      "label": "$x_c$ [mm]",
+      "RMSE": 1.2596594095230103,
+      "MAE": 0.9263074398040771,
+      "mean_relative_error": 0.1202564686536789
+    }
+  ]
+}

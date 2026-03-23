@@ -1,0 +1,20 @@
+{
+  "checkpoint": "dispersion_x_spike",
+  "task": "dispersion_x",
+  "mode": "spike",
+  "n_test_samples": 22412,
+  "metrics": [
+    {
+      "label": "$\\sigma^2_x$",
+      "RMSE": 0.7669970393180847,
+      "MAE": 0.5123825073242188,
+      "mean_relative_error": 0.22798533737659454
+    },
+    {
+      "label": "$\\sigma^2_x\\ [\\mathrm{mm}^2]$",
+      "RMSE": 6.902973175048828,
+      "MAE": 4.611443042755127,
+      "mean_relative_error": 0.22798533737659454
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "checkpoint": "energy_centroid_membrane",
+  "task": "energy_centroid",
+  "mode": "membrane",
+  "n_test_samples": 22412,
+  "metrics": [
+    {
+      "label": "$\\log(E\\,/\\,\\mathrm{MeV})$",
+      "RMSE": 0.07368196547031403,
+      "MAE": 0.056050125509500504,
+      "mean_relative_error": 0.015343661420047283
+    },
+    {
+      "label": "$x_c$",
+      "RMSE": 0.5501939654350281,
+      "MAE": 0.43765726685523987,
+      "mean_relative_error": 0.1429818570613861
+    },
+    {
+      "label": "$y_c$",
+      "RMSE": 0.5491023659706116,
+      "MAE": 0.41329213976860046,
+      "mean_relative_error": 0.1602170765399933
+    },
+    {
+      "label": "$z_c$",
+      "RMSE": 0.24487169086933136,
+      "MAE": 0.1873467117547989,
+      "mean_relative_error": 0.049223773181438446
+    },
+    {
+      "label": "$x_c$ [mm]",
+      "RMSE": 1.6505818367004395,
+      "MAE": 1.312971830368042,
+      "mean_relative_error": 0.1429818570613861
+    },
+    {
+      "label": "$y_c$ [mm]",
+      "RMSE": 1.6473071575164795,
+      "MAE": 1.2398765087127686,
+      "mean_relative_error": 0.1602170765399933
+    },
+    {
+      "label": "$z_c$ [mm]",
+      "RMSE": 2.938460350036621,
+      "MAE": 2.2481606006622314,
+      "mean_relative_error": 0.049223773181438446
+    },
+    {
+      "label": "$E$ [GeV]",
+      "RMSE": 2.2231547832489014,
+      "MAE": 1.292142391204834,
+      "mean_relative_error": 0.1260785311460495
+    }
+  ]
+}

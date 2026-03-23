@@ -1,0 +1,20 @@
+{
+  "checkpoint": "energy_spike",
+  "task": "energy",
+  "mode": "spike",
+  "n_test_samples": 22412,
+  "metrics": [
+    {
+      "label": "$\\log(E\\,/\\,\\mathrm{MeV})$",
+      "RMSE": 0.08856207877397537,
+      "MAE": 0.07141421735286713,
+      "mean_relative_error": 0.019361739978194237
+    },
+    {
+      "label": "$E$ [GeV]",
+      "RMSE": 2.9240550994873047,
+      "MAE": 1.8765426874160767,
+      "mean_relative_error": 0.18646088242530823
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "checkpoint": "centroid_y_refl",
+  "task": "centroid_y",
+  "mode": "refl",
+  "n_test_samples": 22412,
+  "metrics": [
+    {
+      "label": "$y_c$",
+      "RMSE": 2.148770332336426,
+      "MAE": 1.7775360345840454,
+      "mean_relative_error": 0.45856615900993347
+    },
+    {
+      "label": "$y_c$ [mm]",
+      "RMSE": 6.446310997009277,
+      "MAE": 5.332607269287109,
+      "mean_relative_error": 0.45856615900993347
+    }
+  ]
+}

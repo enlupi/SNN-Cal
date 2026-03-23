@@ -1,0 +1,20 @@
+{
+  "checkpoint": "energy_membrane",
+  "task": "energy",
+  "mode": "membrane",
+  "n_test_samples": 22412,
+  "metrics": [
+    {
+      "label": "$\\log(E\\,/\\,\\mathrm{MeV})$",
+      "RMSE": 0.05630455166101456,
+      "MAE": 0.04343793913722038,
+      "mean_relative_error": 0.011868590489029884
+    },
+    {
+      "label": "$E$ [GeV]",
+      "RMSE": 1.68281888961792,
+      "MAE": 1.011895775794983,
+      "mean_relative_error": 0.09981018304824829
+    }
+  ]
+}

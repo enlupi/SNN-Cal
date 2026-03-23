@@ -1,0 +1,20 @@
+{
+  "checkpoint": "centroid_z_membrane",
+  "task": "centroid_z",
+  "mode": "membrane",
+  "n_test_samples": 22412,
+  "metrics": [
+    {
+      "label": "$z_c$",
+      "RMSE": 0.21925437450408936,
+      "MAE": 0.17131942510604858,
+      "mean_relative_error": 0.2807203531265259
+    },
+    {
+      "label": "$z_c$ [mm]",
+      "RMSE": 2.6310524940490723,
+      "MAE": 2.055832862854004,
+      "mean_relative_error": 0.2807203531265259
+    }
+  ]
+}

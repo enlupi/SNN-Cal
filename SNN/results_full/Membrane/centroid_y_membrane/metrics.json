@@ -1,0 +1,20 @@
+{
+  "checkpoint": "centroid_y_membrane",
+  "task": "centroid_y",
+  "mode": "membrane",
+  "n_test_samples": 22412,
+  "metrics": [
+    {
+      "label": "$y_c$",
+      "RMSE": 0.48045703768730164,
+      "MAE": 0.3595558702945709,
+      "mean_relative_error": 0.1644045114517212
+    },
+    {
+      "label": "$y_c$ [mm]",
+      "RMSE": 1.4413710832595825,
+      "MAE": 1.0786675214767456,
+      "mean_relative_error": 0.1644045114517212
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "checkpoint": "centroid_x_ann",
+  "task": "centroid_x",
+  "mode": "ann",
+  "n_test_samples": 22412,
+  "metrics": [
+    {
+      "label": "$x_c$",
+      "RMSE": 0.8730588555335999,
+      "MAE": 0.5521012544631958,
+      "mean_relative_error": 0.2902771830558777
+    },
+    {
+      "label": "$x_c$ [mm]",
+      "RMSE": 2.6191763877868652,
+      "MAE": 1.6563036441802979,
+      "mean_relative_error": 0.2902771830558777
+    }
+  ]
+}
