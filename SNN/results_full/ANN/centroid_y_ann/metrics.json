@@ -8,13 +8,13 @@
       "label": "$y_c$",
       "RMSE": 1.097469687461853,
       "MAE": 0.7781032919883728,
-      "mean_relative_error": 0.28226014971733093
+      "mean_relative_error": 0.2708129584789276
     },
     {
       "label": "$y_c$ [mm]",
       "RMSE": 3.2924094200134277,
       "MAE": 2.3343100547790527,
-      "mean_relative_error": 0.28226014971733093
+      "mean_relative_error": 0.2726276218891144
     }
   ]
 }

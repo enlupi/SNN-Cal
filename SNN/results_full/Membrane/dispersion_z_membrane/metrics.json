@@ -8,13 +8,13 @@
       "label": "$\\sigma^2_z$",
       "RMSE": 0.46814996004104614,
       "MAE": 0.31669852137565613,
-      "mean_relative_error": 9.994932174682617
+      "mean_relative_error": 0.09703624993562698
     },
     {
       "label": "$\\sigma^2_z\\ [\\mathrm{mm}^2]$",
       "RMSE": 67.4135971069336,
       "MAE": 45.604583740234375,
-      "mean_relative_error": 9.994932174682617
+      "mean_relative_error": 0.13036538660526276
     }
   ]
 }

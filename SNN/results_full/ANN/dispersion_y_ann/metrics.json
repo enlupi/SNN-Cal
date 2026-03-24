@@ -8,13 +8,13 @@
       "label": "$\\sigma^2_y$",
       "RMSE": 0.9107854962348938,
       "MAE": 0.6390799283981323,
-      "mean_relative_error": 0.3287675976753235
+      "mean_relative_error": 0.30872097611427307
     },
     {
       "label": "$\\sigma^2_y\\ [\\mathrm{mm}^2]$",
       "RMSE": 8.19706916809082,
       "MAE": 5.751718997955322,
-      "mean_relative_error": 0.3287675976753235
+      "mean_relative_error": 0.31865808367729187
     }
   ]
 }

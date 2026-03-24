@@ -14,19 +14,19 @@
       "label": "$\\sigma^2_x$",
       "RMSE": 0.8320959806442261,
       "MAE": 0.5435326099395752,
-      "mean_relative_error": 0.22714601457118988
+      "mean_relative_error": 0.22233103215694427
     },
     {
       "label": "$\\sigma^2_y$",
       "RMSE": 0.7531300187110901,
       "MAE": 0.4911206066608429,
-      "mean_relative_error": 0.21562008559703827
+      "mean_relative_error": 0.20727667212486267
     },
     {
       "label": "$\\sigma^2_z$",
       "RMSE": 0.4717450439929962,
       "MAE": 0.34174054861068726,
-      "mean_relative_error": 1.1272649765014648
+      "mean_relative_error": 0.11296584457159042
     },
     {
       "label": "$\\sigma^2_x\\ [\\mathrm{mm}^2]$",
@@ -38,19 +38,19 @@
       "label": "$\\sigma^2_y\\ [\\mathrm{mm}^2]$",
       "RMSE": 6.778170108795166,
       "MAE": 4.420085430145264,
-      "mean_relative_error": 0.21562008559703827
+      "mean_relative_error": 0.21116353571414948
     },
     {
       "label": "$\\sigma^2_z\\ [\\mathrm{mm}^2]$",
       "RMSE": 67.93128967285156,
       "MAE": 49.21063995361328,
-      "mean_relative_error": 1.1272649765014648
+      "mean_relative_error": 0.13120302557945251
     },
     {
       "label": "$E$ [GeV]",
       "RMSE": 1.805597186088562,
       "MAE": 1.0806543827056885,
-      "mean_relative_error": 0.11340462416410446
+      "mean_relative_error": 0.1098882332444191
     }
   ]
 }

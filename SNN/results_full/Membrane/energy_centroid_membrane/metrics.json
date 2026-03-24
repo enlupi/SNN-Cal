@@ -14,43 +14,43 @@
       "label": "$x_c$",
       "RMSE": 0.5501939654350281,
       "MAE": 0.43765726685523987,
-      "mean_relative_error": 0.1429818570613861
+      "mean_relative_error": 0.1401345282793045
     },
     {
       "label": "$y_c$",
       "RMSE": 0.5491023659706116,
       "MAE": 0.41329213976860046,
-      "mean_relative_error": 0.1602170765399933
+      "mean_relative_error": 0.15697814524173737
     },
     {
       "label": "$z_c$",
       "RMSE": 0.24487169086933136,
       "MAE": 0.1873467117547989,
-      "mean_relative_error": 0.049223773181438446
+      "mean_relative_error": 0.0299860630184412
     },
     {
       "label": "$x_c$ [mm]",
       "RMSE": 1.6505818367004395,
       "MAE": 1.312971830368042,
-      "mean_relative_error": 0.1429818570613861
+      "mean_relative_error": 0.1416701376438141
     },
     {
       "label": "$y_c$ [mm]",
       "RMSE": 1.6473071575164795,
       "MAE": 1.2398765087127686,
-      "mean_relative_error": 0.1602170765399933
+      "mean_relative_error": 0.15788611769676208
     },
     {
       "label": "$z_c$ [mm]",
       "RMSE": 2.938460350036621,
       "MAE": 2.2481606006622314,
-      "mean_relative_error": 0.049223773181438446
+      "mean_relative_error": 0.030980871990323067
     },
     {
       "label": "$E$ [GeV]",
       "RMSE": 2.2231547832489014,
       "MAE": 1.292142391204834,
-      "mean_relative_error": 0.1260785311460495
+      "mean_relative_error": 0.12145770341157913
     }
   ]
 }

@@ -8,7 +8,7 @@
       "label": "$\\sigma^2_z$",
       "RMSE": 0.4765753448009491,
       "MAE": 0.3131783902645111,
-      "mean_relative_error": 0.08793653547763824
+      "mean_relative_error": 0.08781983703374863
     },
     {
       "label": "$\\sigma^2_z\\ [\\mathrm{mm}^2]$",
