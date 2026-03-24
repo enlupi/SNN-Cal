@@ -1,0 +1,35 @@
+# eval.sub
+#
+# Submits one HTCondor job per completed checkpoint found in eval_checkpoints.txt.
+# Each job runs eval_job.py on a single checkpoint and writes plots + metrics
+# to eval_plots/<checkpoint_stem>/.
+#
+# Workflow
+# --------
+#   1.  python gen_eval_list.py          # writes eval_checkpoints.txt
+#   2.  condor_submit eval.sub
+#
+# The variable $(ckpt_path) is set per-job from eval_checkpoints.txt.
+
+universe   = vanilla
+
+executable = /lhome/ext/uovi123/uovi123j/SNN-Cal/SNN/eval.sh
+arguments  = $(ckpt_path)
+
+log    = /lhome/ext/uovi123/uovi123j/SNN-Cal/SNN/condor_logs/eval.log
+output = /lhome/ext/uovi123/uovi123j/SNN-Cal/SNN/condor_logs/eval.$(ClusterId).$(ProcId).out
+error  = /lhome/ext/uovi123/uovi123j/SNN-Cal/SNN/condor_logs/eval.$(ClusterId).$(ProcId).err
+
+notify_user  = enrico.lupi@cern.ch
+notification = Always
+
+# ── Resource requests ──────────────────────────────────────────────────────────
+request_cpus   = 4
+request_memory = 16G
+request_disk   = 5G
+
+# Uncomment to request GPU nodes (evaluation is fast on CPU, GPU is optional):
+#request_gpus = 1
+#requirements = (GPUs_Capability >= 7.0)
+
+queue ckpt_path from eval_checkpoints.txt
