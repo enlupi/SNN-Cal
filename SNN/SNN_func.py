@@ -18,7 +18,9 @@ from itertools import accumulate
 
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-
+if torch.backends.mps.is_available():
+    device = torch.device("mps")
+    torch.set_default_dtype(torch.float32)
 
 ###############################################################################
 #                                                                             #
@@ -365,8 +367,12 @@ class Trainer:
         }
 
         self.current_epoch = 0
-        self.loss_hist     = {"train": {}, "validation": {}, "test": {}}
-        self.acc_hist      = {"validation": {}, "test": {}}
+        self.loss_hist = {"train": {}, "validation": {}, "test": {}}
+        self.acc_hist = {"validation": {}, "test": {}}
+        self.par_hist = {}
+        for name, param in self.net.named_parameters():
+            if param.requires_grad:
+                self.par_hist[name] = []
 
     # ------------------------------------------------------------------
     # Checkpointing
@@ -468,7 +474,11 @@ class Trainer:
             print(f"  Validation {task_metric} = {self.acc_hist['validation'][self.current_epoch]}")
             print("\n-------------------------------\n")
 
-        for _ in tqdm(range(num_epochs), desc="Epoch"):
+        # Save value of optimizable parameters
+        for name, param in self.net.named_parameters():
+            if param.requires_grad:
+                self.par_hist[name].append(param.cpu().detach().numpy())
+        for epoch in tqdm(range(num_epochs), desc="Epoch"):
             self.net.train()
 
             for data, targets in tqdm(self.datasets["train"], desc="Batches", leave=False):
@@ -481,6 +491,11 @@ class Trainer:
 
                 self.optimizer.zero_grad()
                 loss_val.backward()
+                # Save value of optimizable parameters
+                for name, param in self.net.named_parameters():
+                    if param.requires_grad:
+                        pipi = param.cpu().clone().detach().numpy()
+                        self.par_hist[name].append(pipi)
                 self.optimizer.step()
 
                 # Accumulate per-batch training loss
@@ -675,3 +690,6 @@ class Trainer:
                 cm.update(pred, targets)
 
         return cm
+
+    def get_par_hist(self):
+        return self.par_hist
